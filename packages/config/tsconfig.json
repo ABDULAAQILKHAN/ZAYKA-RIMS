@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@zayka/config/*": ["./*"]
+    }
+  },
+  "include": ["*.ts", "*.js", "*.mjs", "*.json"],
+  "exclude": ["node_modules"]
+}
