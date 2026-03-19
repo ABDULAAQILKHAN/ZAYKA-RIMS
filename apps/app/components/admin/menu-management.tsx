@@ -6,11 +6,11 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Plus, Edit, Trash2, Search, Eye, EyeOff, Clock, SquareDot } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@zayka/ui"
+import { Input } from "@zayka/ui"
+import { Card, CardContent } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zayka/ui"
 import { MenuItemForm } from "./menu-item-form"
 import {
   useGetMenuItemsQuery,
@@ -19,7 +19,7 @@ import {
   useToggleMenuItemAvailabilityMutation,
   type MenuItem
 } from "@/store/menuApi"
-import { deleteImage, getImagePathFromUrl } from "@/lib/supabase/storage"
+import { deleteImage, getImagePathFromUrl } from "@zayka/auth/storage"
 import toast from "react-hot-toast"
 
 export default function MenuManagement() {

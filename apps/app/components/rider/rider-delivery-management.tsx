@@ -8,11 +8,11 @@ import {
     useDeliverOrderMutation,
     type Order
 } from "@/store/ordersApi"
-import { formatCurrency, formatOrderDate } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { formatCurrency, formatOrderDate } from "@zayka/utils"
+import { Button } from "@zayka/ui"
+import { Card, CardContent, CardHeader, CardTitle } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@zayka/ui"
 import {
     Package,
     Truck,
@@ -28,7 +28,7 @@ import {
     Navigation
 } from "lucide-react"
 import { toast } from "sonner"
-import { cn } from "@/lib/utils"
+import { cn } from "@zayka/utils"
 
 export default function RiderDeliveryManagement() {
     const {

@@ -2,15 +2,15 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@zayka/ui"
+import { Button } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
 import { ChefHat, ShoppingBag, Clock, DollarSign, Plus } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@zayka/ui"
 import StaffManagement from "./staff-management"
 import OrderManagement from "./order-management"
 import { useGetDashboardStatsQuery, useGetRecentOrdersQuery } from "@/store/dashboardApi"
-import { formatCurrency, formatOrderDate } from "@/lib/utils"
+import { formatCurrency, formatOrderDate } from "@zayka/utils"
 import { useAppSelector } from "@/store/hooks"
 
 export default function AdminDashboard() {

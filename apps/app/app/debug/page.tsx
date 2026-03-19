@@ -1,8 +1,8 @@
 "use client"
 
 import { useAppSelector } from "@/store/hooks"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@zayka/ui"
+import { Card, CardContent, CardHeader, CardTitle } from "@zayka/ui"
 
 export default function DebugPage() {
   const authState = useAppSelector((state) => state.auth)

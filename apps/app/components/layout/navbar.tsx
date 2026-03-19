@@ -5,13 +5,13 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { Menu, X, ShoppingCart, User, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@zayka/ui"
 import { ModeToggle } from "@/components/mode-toggle"
 import { useAppSelector } from "@/store/hooks"
 import { useGetCartQuery } from "@/store/cartApi"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@zayka/auth/client"
 import { useRouter } from "next/navigation"
-import { cn } from "@/lib/utils"
+import { cn } from "@zayka/utils"
 import { useAuth } from "../providers/auth-provider"
 import {
   DropdownMenu,
@@ -19,7 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@zayka/ui"
 import toast from "react-hot-toast"
 
 const getNavItems = (userRole?: string, isAuthenticated?: boolean) => {

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useGetAllOrdersQuery, useUpdateOrderStatusMutation, type Order } from "@/store/ordersApi"
-import { formatCurrency, formatOrderDate } from "@/lib/utils"
+import { formatCurrency, formatOrderDate } from "@zayka/utils"
 import {
     Table,
     TableBody,
@@ -10,19 +10,19 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table"
+} from "@zayka/ui"
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+} from "@zayka/ui"
+import { Badge } from "@zayka/ui"
+import { Input } from "@zayka/ui"
 import { Search, Filter } from "lucide-react"
 import { toast } from "sonner"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@zayka/ui"
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
     pending: "outline",

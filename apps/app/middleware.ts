@@ -1,47 +1,10 @@
 // middleware.ts
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createMiddlewareClient } from '@zayka/auth/middleware'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
-
-  // Create a Supabase client that can authenticated requests
-  const supabase: any = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is set, update the request cookies and response cookies
-          request.cookies.set({ name, value, ...options })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the request cookies and response cookies
-          request.cookies.set({ name, value: '', ...options })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          response.cookies.set({ name, value: '', ...options })
-        },
-      },
-    }
-  )
-
+  const { supabase, response: supabaseResponse } = createMiddlewareClient(request)
+  let response = supabaseResponse
 
   // It's crucial to call this before any logic that relies on the user's auth state.
   const { data: { user } } = await supabase.auth.getUser()

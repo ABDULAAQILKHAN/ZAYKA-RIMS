@@ -3,10 +3,10 @@
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
 import { Moon, Sun } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Button } from "@zayka/ui"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@zayka/ui"
 import { useAuth } from "@/components/providers/auth-provider"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@zayka/auth/client"
 import toast from "react-hot-toast"
 
 export function ModeToggle() {

@@ -7,12 +7,12 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@zayka/ui"
+import { Input } from "@zayka/ui"
+import { Label } from "@zayka/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@zayka/ui"
 // import { useToast } from "@/hooks/use-toast" // Removed useToast import
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@zayka/auth/client"
 import toast from "react-hot-toast"
 interface FormData {
   firstName: string

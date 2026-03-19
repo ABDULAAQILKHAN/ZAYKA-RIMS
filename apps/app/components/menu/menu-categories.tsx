@@ -3,8 +3,8 @@
 import type React from "react"
 import { motion } from "framer-motion"
 import { useSearchParams, useRouter, usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from "@zayka/utils"
+import { Button } from "@zayka/ui"
 
 import { MenuCategory } from "@/store/menuApi"
 

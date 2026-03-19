@@ -4,15 +4,15 @@ import { useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { Minus, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
+} from "@zayka/ui"
 import { useAppSelector } from "@/store/hooks"
 import { useAddToCartMutation, CartItem } from "@/store/cartApi"
 import { toast } from "sonner"

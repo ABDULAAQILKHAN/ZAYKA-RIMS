@@ -1,25 +1,25 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
+import { Button } from "@zayka/ui"
+import { Input } from "@zayka/ui"
+import { Label } from "@zayka/ui"
+import { Textarea } from "@zayka/ui"
+import { Switch } from "@zayka/ui"
 import { ImageUpload } from "@/components/ui/image-upload"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@zayka/ui"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@zayka/ui"
 import {
   useCreateTodaysSpecialMutation,
   useUpdateTodaysSpecialMutation,
   useGetTodaysSpecialByIdQuery
 } from "@/store/offersApi"
-import { deleteImage, getImagePathFromUrl } from "@/lib/supabase/storage"
+import { deleteImage, getImagePathFromUrl } from "@zayka/auth/storage"
 import toast from "react-hot-toast"
 
 interface TodaysSpecialFormProps {

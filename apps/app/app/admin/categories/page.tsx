@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@zayka/ui"
 import CategoryManagement from "@/components/admin/category-management"
 
 export const metadata: Metadata = {

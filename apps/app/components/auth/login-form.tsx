@@ -7,11 +7,11 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { createClient } from "@/lib/supabase/client"
+import { Button } from "@zayka/ui"
+import { Input } from "@zayka/ui"
+import { Label } from "@zayka/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@zayka/ui"
+import { createClient } from "@zayka/auth/client"
 import { useAppDispatch } from '@/store/hooks'
 import { setToken } from '@/store/authSlice'
 import { useCreateProfileMutation } from '@/store/profileApi'

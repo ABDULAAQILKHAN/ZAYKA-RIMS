@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useGetMenuItemsQuery, useToggleMenuItemAvailabilityMutation } from "@/store/menuApi"
-import { formatCurrency } from "@/lib/utils"
+import { formatCurrency } from "@zayka/utils"
 import {
     Table,
     TableBody,
@@ -10,12 +10,12 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table"
-import { Switch } from "@/components/ui/switch"
-import { Input } from "@/components/ui/input"
+} from "@zayka/ui"
+import { Switch } from "@zayka/ui"
+import { Input } from "@zayka/ui"
 import { Search } from "lucide-react"
 import { toast } from "sonner"
-import { Badge } from "@/components/ui/badge"
+import { Badge } from "@zayka/ui"
 
 export default function StaffMenuManagement() {
     const { data: menuItems = [], isLoading } = useGetMenuItemsQuery({})

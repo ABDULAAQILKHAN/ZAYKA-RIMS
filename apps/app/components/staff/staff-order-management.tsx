@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useGetAllOrdersQuery } from "@/store/ordersApi"
-import { formatCurrency, formatOrderDate } from "@/lib/utils"
+import { formatCurrency, formatOrderDate } from "@zayka/utils"
 import {
     Table,
     TableBody,
@@ -10,9 +10,9 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+} from "@zayka/ui"
+import { Badge } from "@zayka/ui"
+import { Input } from "@zayka/ui"
 import { Search } from "lucide-react"
 
 const statusColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {

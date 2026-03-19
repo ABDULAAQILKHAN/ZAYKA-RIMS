@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Search, Clock, CheckCircle, Truck, Package } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { formatOrderDate, formatCurrency } from "@/lib/utils"
+import { Card, CardContent, CardHeader, CardTitle } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
+import { Input } from "@zayka/ui"
+import { Button } from "@zayka/ui"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@zayka/ui"
+import { formatOrderDate, formatCurrency } from "@zayka/utils"
 import { useGetMyOrdersQuery, type Order } from "@/store/ordersApi"
 
 const statusSteps = [

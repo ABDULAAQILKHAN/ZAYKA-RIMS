@@ -3,20 +3,20 @@
 import { useState, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { User, Mail, Phone, Edit2, Save, X, Camera, Trash2, Loader2, MapPin, Plus } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@zayka/ui"
+import { Switch } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
 import {
   useGetAddressesQuery,
   useAddAddressMutation,
   useDeleteAddressMutation,
   useSetDefaultAddressMutation
 } from "@/store/addressApi"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@zayka/ui"
+import { Label } from "@zayka/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@zayka/ui"
 import { useAuth } from "@/components/providers/auth-provider"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@zayka/auth/client"
 import toast from "react-hot-toast"
 
 export default function ProfilePage() {

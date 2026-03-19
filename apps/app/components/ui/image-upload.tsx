@@ -1,14 +1,14 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Progress } from "@/components/ui/progress"
+import { Button } from "@zayka/ui"
+import { Card, CardContent } from "@zayka/ui"
+import { Label } from "@zayka/ui"
+import { Progress } from "@zayka/ui"
 import { X, Upload, Image as ImageIcon } from "lucide-react"
 import Image from "next/image"
-import { uploadImage, updateImage, deleteImage, getImagePathFromUrl, isSupabaseImage } from "@/lib/supabase/storage"
-import type { ImageUploadResult } from "@/lib/supabase/storage"
+import { uploadImage, updateImage, deleteImage, getImagePathFromUrl, isSupabaseImage } from "@zayka/auth/storage"
+import type { ImageUploadResult } from "@zayka/auth/storage"
 import toast from "react-hot-toast"
 
 interface ImageUploadProps {

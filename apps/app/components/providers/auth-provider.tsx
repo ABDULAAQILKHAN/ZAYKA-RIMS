@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@zayka/auth/client"
 import type { User } from "@supabase/supabase-js"
 import { useAppDispatch } from "@/store/hooks"
 import { setToken, clearToken } from "@/store/authSlice"

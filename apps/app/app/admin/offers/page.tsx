@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@zayka/ui"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
 import { Plus, Edit, Trash2, Eye, EyeOff, ArrowLeft } from "lucide-react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@zayka/ui"
 import {
   useGetSpecialOffersQuery,
   useGetTodaysSpecialsQuery,
@@ -19,7 +19,7 @@ import { SpecialOfferForm } from "@/components/admin/special-offer-form"
 import { TodaysSpecialForm } from "@/components/admin/todays-special-form"
 import Image from "next/image"
 import toast from "react-hot-toast"
-import { deleteImage, getImagePathFromUrl } from "@/lib/supabase/storage"
+import { deleteImage, getImagePathFromUrl } from "@zayka/auth/storage"
 
 export default function OffersPage() {
   const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null)

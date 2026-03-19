@@ -7,21 +7,21 @@ import * as z from "zod"
 import { Loader2, Plus, Trash2, UserCog, RefreshCw, CheckCircle, XCircle, Clock } from "lucide-react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@zayka/ui"
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from "@/components/ui/select"
+} from "@zayka/ui"
 import {
     Card,
     CardContent,
     CardDescription,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card"
+} from "@zayka/ui"
 import {
     Dialog,
     DialogContent,
@@ -30,7 +30,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
-} from "@/components/ui/dialog"
+} from "@zayka/ui"
 import {
     Form,
     FormControl,
@@ -38,8 +38,8 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+} from "@zayka/ui"
+import { Input } from "@zayka/ui"
 import {
     Table,
     TableBody,
@@ -47,8 +47,8 @@ import {
     TableHead,
     TableHeader,
     TableRow,
-} from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
+} from "@zayka/ui"
+import { Badge } from "@zayka/ui"
 
 const formSchema = z.object({
     name: z.string().min(2, "Name must be at least 2 characters"),

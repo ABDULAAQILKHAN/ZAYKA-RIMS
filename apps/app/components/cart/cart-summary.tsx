@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
+import { Button } from "@zayka/ui"
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@zayka/ui"
+import { Separator } from "@zayka/ui"
 import { useAppSelector } from "@/store/hooks"
 import { useGetCartQuery, CartItem } from "@/store/cartApi"
 

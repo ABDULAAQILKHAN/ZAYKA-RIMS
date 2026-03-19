@@ -8,4 +8,12 @@ export { createClient as createServerClient } from './server'
 export { createMiddlewareClient } from './middleware'
 
 // Storage helpers
-export { uploadImage, type ImageUploadResult, type ImageDeleteResult } from './storage'
+export {
+  uploadImage,
+  deleteImage,
+  updateImage,
+  getImagePathFromUrl,
+  isSupabaseImage,
+  type ImageUploadResult,
+  type ImageDeleteResult,
+} from './storage'

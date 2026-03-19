@@ -1,7 +1,7 @@
 import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@zayka/ui"
 import LiveOrders from "@/components/admin/live-orders"
 
 export const metadata: Metadata = {

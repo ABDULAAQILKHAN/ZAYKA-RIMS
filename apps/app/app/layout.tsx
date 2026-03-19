@@ -5,7 +5,7 @@ import Navbar from "@/components/layout/navbar"
 import Footer from "@/components/layout/footer"
 import { StoreProvider } from "@/components/providers/store-provider"
 import { AuthProvider } from "@/components/providers/auth-provider"
-import { cn } from "@/lib/utils"
+import { cn } from "@zayka/utils"
 import "@/app/globals.css"
 import { Toaster } from "react-hot-toast"
 const fontSans = FontSans({

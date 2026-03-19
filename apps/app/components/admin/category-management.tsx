@@ -4,17 +4,17 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Plus, Edit, Trash2, Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@zayka/ui"
+import { Input } from "@zayka/ui"
+import { Card, CardContent } from "@zayka/ui"
+import { Badge } from "@zayka/ui"
 import { CategoryForm } from "./category-form"
 import {
     useGetMenuCategoriesQuery,
     useDeleteMenuCategoryMutation,
     type MenuCategory
 } from "@/store/menuApi"
-import { deleteImage, getImagePathFromUrl } from "@/lib/supabase/storage"
+import { deleteImage, getImagePathFromUrl } from "@zayka/auth/storage"
 import toast from "react-hot-toast"
 
 export default function CategoryManagement() {
