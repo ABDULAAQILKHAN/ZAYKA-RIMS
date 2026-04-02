@@ -45,7 +45,7 @@ export type OrderStatus =
   | "cancelled"
 
 // ─── User / Auth ────────────────────────────────────────
-export type UserRole = "customer" | "admin" | "staff" | "manager" | "rider"
+export type UserRole = "customer" | "admin" | "staff" | "manager" | "rider" | "desk-manager"
 
 export interface UserProfile {
   id: string
@@ -81,6 +81,17 @@ export interface Address {
 }
 
 // ─── Inventory (RIMS) ──────────────────────────────────
+export interface Ingredient {
+  id: string
+  name: string
+  unit: string
+  currentStock: number
+  minStock: number
+  costPerUnit: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface InventoryItem {
   id: string
   name: string
@@ -92,6 +103,48 @@ export interface InventoryItem {
   supplier?: string
   lastRestocked?: string
   expiryDate?: string
+}
+
+// ─── Recipe (Menu ↔ Ingredient Mapping) ────────────────
+export interface Recipe {
+  id: string
+  menuItemId: string
+  ingredientId: string
+  quantityRequired: number
+  ingredient?: Ingredient
+  menuItem?: MenuItem
+}
+
+// ─── RIMS Order ────────────────────────────────────────
+export interface RimsOrder {
+  id: string
+  items: RimsOrderItem[]
+  subtotal: number
+  gst: number
+  total: number
+  status: "pending" | "confirmed" | "preparing" | "ready" | "completed" | "cancelled"
+  createdAt: string
+  updatedAt: string
+}
+
+export interface RimsOrderItem {
+  menuItemId: string
+  menuItemName: string
+  quantity: number
+  price: number
+}
+
+// ─── Invoice / Billing ─────────────────────────────────
+export interface Invoice {
+  id: string
+  orderId: string
+  subtotal: number
+  gstPercent: number
+  gstAmount: number
+  total: number
+  status: "pending" | "paid" | "overdue"
+  createdAt: string
+  paidAt?: string
 }
 
 export interface Supplier {

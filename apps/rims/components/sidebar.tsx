@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@zayka/ui"
+import { Button } from "@zayka/ui"
+import { useAuth } from "@/hooks/use-auth"
 import {
   LayoutDashboard,
   Package,
@@ -11,6 +13,7 @@ import {
   Receipt,
   BarChart3,
   Settings,
+  LogOut,
 } from "lucide-react"
 
 const navItems = [
@@ -25,6 +28,7 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const { user, role, signOut } = useAuth()
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-card">
@@ -62,7 +66,18 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-3">
+        {user && (
+          <div className="flex items-center justify-between">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{user.email}</p>
+              <p className="text-xs text-muted-foreground capitalize">{role}</p>
+            </div>
+            <Button variant="ghost" size="icon" onClick={signOut} title="Sign out">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} Zayka Darbar
         </p>

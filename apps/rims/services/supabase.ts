@@ -1,5 +1,2 @@
-import { supabaseClient } from "@zayka/auth"
-
-const createClient = supabaseClient
-
-export { createClient }
+export { createClient, supabaseClient } from "@zayka/auth/client"
+export { createClient as createServerClient } from "@zayka/auth/server"
