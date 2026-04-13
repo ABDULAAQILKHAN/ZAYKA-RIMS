@@ -1,7 +1,8 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { cn } from "@zayka/utils"
-import { Sidebar } from "@/components/sidebar"
+import { AuthProvider } from "@/components/providers/auth-provider"
+import { StoreProvider } from "@/components/providers/store-provider"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
@@ -24,10 +25,9 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        <div className="flex h-screen overflow-hidden">
-          <Sidebar />
-          <main className="flex-1 overflow-y-auto">{children}</main>
-        </div>
+        <StoreProvider>
+          <AuthProvider>{children}</AuthProvider>
+        </StoreProvider>
       </body>
     </html>
   )

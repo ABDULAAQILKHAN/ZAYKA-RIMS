@@ -1,4 +1,4 @@
-import { supabaseClient } from "@zayka/auth"
+import { supabaseClient } from "@zayka/auth/client"
 
 const createClient = supabaseClient
 

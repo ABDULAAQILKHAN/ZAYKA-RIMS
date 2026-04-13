@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@zayka/ui"
+import { usePathname, useRouter } from "next/navigation"
+import { Button, cn } from "@zayka/ui"
 import {
   LayoutDashboard,
   Package,
@@ -10,8 +10,9 @@ import {
   ShoppingCart,
   Receipt,
   BarChart3,
-  Settings,
+  LogOut,
 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -20,11 +21,17 @@ const navItems = [
   { label: "Orders", href: "/orders", icon: ShoppingCart },
   { label: "Billing / Invoices", href: "/billing", icon: Receipt },
   { label: "Reports", href: "/reports", icon: BarChart3 },
-  { label: "Settings", href: "/settings", icon: Settings },
 ]
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { signOut } = useAuth()
+
+  const onSignOut = async () => {
+    await signOut()
+    router.push("/login")
+  }
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-card">
@@ -62,10 +69,17 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t p-4">
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Zayka Darbar
-        </p>
+      <div className="space-y-3 border-t p-4">
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          type="button"
+          onClick={onSignOut}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign out
+        </Button>
+        <p className="text-xs text-muted-foreground">(c) {new Date().getFullYear()} Zayka Darbar</p>
       </div>
     </aside>
   )
