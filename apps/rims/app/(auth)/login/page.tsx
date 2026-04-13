@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, type FormEvent } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import {
   Button,
   Card,
@@ -18,7 +18,6 @@ import { setToken } from "@/store/auth-slice"
 
 export default function LoginPage() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const dispatch = useAppDispatch()
   const [login, { isLoading }] = useLoginMutation()
 
@@ -27,10 +26,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (searchParams.get("error") === "unauthorized") {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("error") === "unauthorized") {
       setError("Unauthorized access")
     }
-  }, [searchParams])
+  }, [])
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
