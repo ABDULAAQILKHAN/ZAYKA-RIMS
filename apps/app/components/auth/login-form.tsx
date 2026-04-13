@@ -14,7 +14,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@zayk
 import { createClient } from "@zayka/auth/client"
 import { useAppDispatch } from '@/store/hooks'
 import { setToken } from '@/store/authSlice'
-import { useCreateProfileMutation } from '@/store/profileApi'
 // import { useAuth } from "@/components/providers/auth-provider"
 import toast from "react-hot-toast"
 
@@ -40,7 +39,6 @@ export default function LoginForm() {
   // const { refreshProfile } = useAuth()
   const supabase = createClient()
   const dispatch = useAppDispatch()
-  const [createProfile] = useCreateProfileMutation()
 
   // Handle invite/magic link tokens in URL hash
   useEffect(() => {
@@ -179,26 +177,6 @@ export default function LoginForm() {
         const accessToken = data.session.access_token
         if (accessToken) {
           dispatch(setToken(accessToken))
-        }
-
-        // Attempt to create/update profile (backend should upsert ideally)
-        try {
-          await createProfile({
-            id: data.user.id,
-            userId: data.user.id,
-            name: data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-            email: data.user.email || formData.email,
-            phone: data.user.user_metadata?.phone || '',
-            avatar: data.user.user_metadata?.avatar_url || '',
-            isDark: false,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          }).unwrap()
-        } catch (e: any) {
-          if (e.status !== 409) {
-            console.warn('Profile creation failed (non-blocking):', e.status)
-            return
-          }
         }
 
         const userRole = data.user.user_metadata?.role || 'customer'
