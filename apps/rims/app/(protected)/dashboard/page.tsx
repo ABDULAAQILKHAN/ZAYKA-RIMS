@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Badge,
   Button,
@@ -19,12 +19,21 @@ import {
 } from "@/store/api"
 
 export default function DashboardPage() {
+  const [isMounted, setIsMounted] = useState(false)
   const { data: tables = [], isLoading: tablesLoading } = useGetTablesQuery()
   const { data: orders = [], isLoading: ordersLoading } = useGetOrdersQuery()
   const { data: sessions = [] } = useGetTableSessionsQuery()
 
   const [period, setPeriod] = useState<InsightsPeriod>("week")
   const { data: insights, isLoading: insightsLoading } = useGetInsightsQuery({ period })
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return null
+  }
 
   const occupiedTables = tables?.length > 0 ? tables.filter((t) => t.status === "occupied") : []
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -170,7 +179,7 @@ export default function DashboardPage() {
                     · ₹{(order.total ?? 0).toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {order.items?.map((i: any) => `${i.menu_item_name} x${i.quantity}`).join(", ") ?? ""}
+                    {order.items?.map((i: any) => `${i?.menu_item_name ?? "Unknown"} x${i?.quantity ?? 0}`).join(", ") ?? ""}
                   </p>
                 </div>
                 <Badge variant="outline">{order.status}</Badge>
@@ -363,7 +372,9 @@ export default function DashboardPage() {
               </Card>
             </div>
           </>
-        ) : null}
+        ) : (
+          <p className="text-sm text-muted-foreground">Failed to load insights.</p>
+        )}
       </section>
     </div>
   )

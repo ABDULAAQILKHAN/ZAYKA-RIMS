@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   Badge,
@@ -49,6 +49,7 @@ const tableStatusOptions: OrderStatus[] = [
 ]
 
 export default function OrdersPage() {
+  const [isMounted, setIsMounted] = useState(false)
   const { data: menu = [] } = useGetMenuQuery()
   const { data: tables = [] } = useGetTablesQuery()
   const { data: orders = [], isLoading } = useGetOrdersQuery()
@@ -61,6 +62,10 @@ export default function OrdersPage() {
   const [selectedTableId, setSelectedTableId] = useState("")
   const [draftItems, setDraftItems] = useState<DraftItem[]>([{ menu_item_id: "", quantity: "1" }])
   const [formError, setFormError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const availableMenu = useMemo(() => (menu?.length > 0 ? menu?.filter((item) => item?.is_available) : []), [menu])
 
@@ -78,6 +83,10 @@ export default function OrdersPage() {
 
   const gstPreview = Number((subtotalPreview * 0.05).toFixed(2))
   const totalPreview = Number((subtotalPreview + gstPreview).toFixed(2))
+
+  if (!isMounted) {
+    return null
+  }
 
   // Show which table has an existing open session
   const getTableLabel = (tableId: string, tableNumber: string) => {
@@ -296,7 +305,7 @@ export default function OrdersPage() {
                         <div>
                           <span className="font-medium">#{order?.id}</span>
                           <span className="ml-2 text-muted-foreground">
-                            {order?.items?.map((i: any) => `${i?.menu_item_name} x${i?.quantity}`).join(", ") ?? ""}
+                            {order?.items?.map((i: any) => `${i?.menu_item_name ?? "Unknown"} x${i?.quantity ?? 0}`).join(", ") ?? ""}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
@@ -330,7 +339,7 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders?.map((order) => (
+              {orders?.length > 0 && orders?.map((order) => (
                 <TableRow key={order?.id}>
                   <TableCell className="font-medium">
                     {order?.id}
@@ -349,7 +358,7 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell>
                     {order?.items
-                      ?.map((item: any) => `${item?.menu_item_name} x${item?.quantity}`)
+                      ?.map((item: any) => `${item?.menu_item_name ?? "Unknown"} x${item?.quantity ?? 0}`)
                       .join(", ") ?? ""}
                   </TableCell>
                   <TableCell>₹{(order?.total ?? 0).toFixed(2)}</TableCell>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Badge,
   Card,
@@ -23,6 +23,7 @@ import {
 import { useGetOrderHistoryQuery, useGetTablesQuery } from "@/store/api"
 
 export default function HistoryPage() {
+  const [isMounted, setIsMounted] = useState(false)
   const [date, setDate] = useState("")
   const [tableId, setTableId] = useState("all")
   const [orderType, setOrderType] = useState<"all" | "table" | "delivery" | "takeaway">("all")
@@ -33,6 +34,14 @@ export default function HistoryPage() {
     table_id: tableId === "all" ? undefined : tableId,
     order_type: orderType,
   })
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return null
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -61,9 +70,9 @@ export default function HistoryPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Tables</SelectItem>
-                {tables.map((table) => (
-                  <SelectItem key={table.id} value={table.id}>
-                    {table.table_number}
+                {tables?.length > 0 && tables.map((table) => (
+                  <SelectItem key={table?.id} value={table?.id}>
+                    {table?.table_number ?? "Unknown"}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -105,40 +114,40 @@ export default function HistoryPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {history.map((order) => (
-                <TableRow key={order.id}>
-                  <TableCell className="font-medium">{order.id}</TableCell>
+              {history?.length > 0 && history.map((order) => (
+                <TableRow key={order?.id}>
+                  <TableCell className="font-medium">{order?.id}</TableCell>
                   <TableCell>
                     <Badge
                       variant={
-                        order.order_type === "table"
+                        order?.order_type === "table"
                           ? "default"
-                          : order.order_type === "takeaway"
+                          : order?.order_type === "takeaway"
                           ? "secondary"
                           : "outline"
                       }
                     >
-                      {order.order_type}
+                      {order?.order_type}
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {order.table_number ?? "-"}
-                    {order.session_id ? (
+                    {order?.table_number ?? "-"}
+                    {order?.session_id ? (
                       <span className="block text-xs text-muted-foreground">
-                        {order.session_id}
+                        {order?.session_id}
                       </span>
                     ) : null}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">
-                    {order.items
-                      .map((item) => `${item.menu_item_name} x${item.quantity}`)
-                      .join(", ")}
+                    {order?.items
+                      ?.map((item: any) => `${item?.menu_item_name ?? "Unknown"} x${item?.quantity ?? 0}`)
+                      .join(", ") ?? ""}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{order.status}</Badge>
+                    <Badge variant="outline">{order?.status}</Badge>
                   </TableCell>
-                  <TableCell>₹{order.total.toFixed(2)}</TableCell>
-                  <TableCell>{new Date(order.created_at).toLocaleString()}</TableCell>
+                  <TableCell>₹{(order?.total ?? 0).toFixed(2)}</TableCell>
+                  <TableCell>{order?.created_at ? new Date(order.created_at).toLocaleString() : "N/A"}</TableCell>
                 </TableRow>
               ))}
               {isLoading ? (
@@ -148,7 +157,7 @@ export default function HistoryPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
-              {!isLoading && history.length === 0 ? (
+              {!isLoading && history?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground">
                     No orders found for the selected filters.

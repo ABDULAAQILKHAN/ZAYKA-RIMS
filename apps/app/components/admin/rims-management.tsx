@@ -105,7 +105,6 @@ function TableFormDialog({
       setError("Capacity must be a positive number")
       return
     }
-
     await onSave({
       table_number: tableNumber,
       capacity: parsedCapacity,

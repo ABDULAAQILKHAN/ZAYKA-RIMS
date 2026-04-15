@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Badge,
   Button,
@@ -25,13 +25,18 @@ import {
 } from "@/store/api"
 
 export default function BillingPage() {
+  const [isMounted, setIsMounted] = useState(false)
   const { data: sessions = [], isLoading: sessionsLoading } = useGetTableSessionsQuery()
   const [closeSession, { isLoading: closingSession }] = useCloseTableSessionMutation()
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [generatedInvoice, setGeneratedInvoice] = useState<InvoiceRecord | null>(null)
 
-  const selectedSession = sessions.find((s) => s.id === selectedSessionId) as
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  const selectedSession = sessions.length > 0 &&sessions?.find((s) => s?.id === selectedSessionId) as
     | (TableSession & { orders: OrderRecord[] })
     | undefined
 
@@ -66,8 +71,8 @@ export default function BillingPage() {
           }
         >()
 
-        selectedSession.orders.forEach((order) => {
-          order.items.forEach((item) => {
+        selectedSession.orders?.forEach((order) => {
+          order.items?.forEach((item) => {
             const existing = itemMap.get(item.menu_item_id)
             if (existing) {
               existing.quantity += item.quantity
@@ -81,6 +86,10 @@ export default function BillingPage() {
         return Array.from(itemMap.values())
       })()
     : []
+
+  if (!isMounted) {
+    return null
+  }
 
   return (
     <div className="space-y-6 p-6">
@@ -102,23 +111,23 @@ export default function BillingPage() {
         <CardContent>
           {sessionsLoading ? (
             <p className="text-sm text-muted-foreground">Loading sessions...</p>
-          ) : sessions.length === 0 ? (
+          ) : sessions?.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No occupied tables at the moment. All tables are available.
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {sessions.map((session) => {
-                const isSelected = selectedSessionId === session.id
-                const duration = Math.round(
-                  (Date.now() - new Date(session.created_at).getTime()) / 60000,
-                )
+              {sessions.length > 0 && sessions?.map((session) => {
+                const isSelected = selectedSessionId === session?.id
+                const duration = session?.created_at 
+                  ? Math.round((Date.now() - new Date(session.created_at).getTime()) / 60000)
+                  : 0
 
                 return (
                   <button
-                    key={session.id}
+                    key={session?.id}
                     type="button"
-                    onClick={() => onSelectSession(session.id)}
+                    onClick={() => onSelectSession(session?.id)}
                     className={`cursor-pointer rounded-lg border p-4 text-left transition-colors ${
                       isSelected
                         ? "border-primary bg-primary/5"
@@ -126,14 +135,14 @@ export default function BillingPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <p className="text-lg font-semibold">{session.table_number}</p>
+                      <p className="text-lg font-semibold">{session?.table_number ?? "Unknown"}</p>
                       <Badge variant="default">Occupied</Badge>
                     </div>
                     <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                       <p>
-                        {session.orders.length} order{session.orders.length !== 1 ? "s" : ""} · {duration} min
+                        {session?.orders?.length ?? 0} order{(session?.orders?.length ?? 0) !== 1 ? "s" : ""} · {duration} min
                       </p>
-                      <p className="font-semibold text-foreground">₹{session.total.toFixed(2)}</p>
+                      <p className="font-semibold text-foreground">₹{(session?.total ?? 0).toFixed(2)}</p>
                     </div>
                   </button>
                 )
@@ -152,7 +161,7 @@ export default function BillingPage() {
                 <CardTitle>{selectedSession.table_number} — Session Details</CardTitle>
                 <CardDescription>
                   Session {selectedSession.id} · Started{" "}
-                  {new Date(selectedSession.created_at).toLocaleTimeString()}
+                  {selectedSession.created_at ? new Date(selectedSession.created_at).toLocaleTimeString() : "N/A"}
                 </CardDescription>
               </div>
               <Button onClick={onCloseAndBill} disabled={closingSession}>
@@ -166,24 +175,24 @@ export default function BillingPage() {
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Orders in this session
               </h3>
-              {selectedSession.orders.map((order, idx) => (
-                <div key={order.id} className="rounded-md border p-3 space-y-2">
+              {selectedSession.orders?.map((order, idx) => (
+                <div key={order?.id} className="rounded-md border p-3 space-y-2">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">
-                      Order {idx + 1} — #{order.id}
+                      Order {idx + 1} — #{order?.id}
                     </p>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs">
-                        {order.status}
+                        {order?.status}
                       </Badge>
-                      <span className="text-sm font-medium">₹{order.total.toFixed(2)}</span>
+                      <span className="text-sm font-medium">₹{(order?.total ?? 0).toFixed(2)}</span>
                     </div>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {order.items.map((i) => `${i.menu_item_name} x${i.quantity}`).join(" · ")}
+                    {order?.items?.map((i: any) => `${i?.menu_item_name ?? "Unknown"} x${i?.quantity ?? 0}`).join(" · ") ?? ""}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Placed at {new Date(order.created_at).toLocaleTimeString()}
+                    Placed at {order?.created_at ? new Date(order.created_at).toLocaleTimeString() : "N/A"}
                   </p>
                 </div>
               ))}
@@ -216,9 +225,9 @@ export default function BillingPage() {
               </Table>
 
               <div className="ml-auto max-w-xs space-y-1 rounded-md border p-3 text-sm">
-                <p>Subtotal: ₹{selectedSession.subtotal.toFixed(2)}</p>
-                <p>GST (5%): ₹{selectedSession.gst.toFixed(2)}</p>
-                <p className="text-base font-bold">Grand Total: ₹{selectedSession.total.toFixed(2)}</p>
+                <p>Subtotal: ₹{(selectedSession.subtotal ?? 0).toFixed(2)}</p>
+                <p>GST (5%): ₹{(selectedSession.gst ?? 0).toFixed(2)}</p>
+                <p className="text-base font-bold">Grand Total: ₹{(selectedSession.total ?? 0).toFixed(2)}</p>
               </div>
             </div>
           </CardContent>
@@ -262,7 +271,7 @@ export default function BillingPage() {
                 <p>Table: {generatedInvoice.table_number}</p>
               ) : null}
               <p>Type: {generatedInvoice.order_type}</p>
-              <p>Date: {new Date(generatedInvoice.created_at).toLocaleString()}</p>
+              <p>Date: {generatedInvoice.created_at ? new Date(generatedInvoice.created_at).toLocaleString() : "N/A"}</p>
             </div>
 
             <Table>
@@ -275,7 +284,7 @@ export default function BillingPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {generatedInvoice.items.map((item) => (
+                {generatedInvoice.items?.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>{item.menu_item_name}</TableCell>
                     <TableCell>{item.quantity}</TableCell>

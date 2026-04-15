@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   Badge,
   Button,
@@ -35,6 +35,7 @@ type DraftItem = {
 }
 
 export default function TakeawayPage() {
+  const [isMounted, setIsMounted] = useState(false)
   const { data: menu = [] } = useGetMenuQuery()
   const { data: history = [] } = useGetOrderHistoryQuery({ order_type: "takeaway" })
 
@@ -44,14 +45,18 @@ export default function TakeawayPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [lastInvoice, setLastInvoice] = useState<InvoiceRecord | null>(null)
 
-  const availableMenu = menu.filter((item) => item.is_available)
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  const availableMenu = useMemo(() => (menu?.length > 0 ? menu?.filter((item) => item?.is_available) : []), [menu])
 
   const subtotalPreview = useMemo(
     () =>
       draftItems.reduce((sum, row) => {
-        const menuItem = availableMenu.find((entry) => entry.id === row.menu_item_id)
+        const menuItem = availableMenu.find((entry) => entry?.id === row?.menu_item_id)
         if (!menuItem) return sum
-        return sum + menuItem.price * Number(row.quantity || 0)
+        return sum + (menuItem?.price ?? 0) * Number(row?.quantity || 0)
       }, 0),
     [availableMenu, draftItems],
   )
@@ -59,15 +64,19 @@ export default function TakeawayPage() {
   const gstPreview = Number((subtotalPreview * 0.05).toFixed(2))
   const totalPreview = Number((subtotalPreview + gstPreview).toFixed(2))
 
+  if (!isMounted) {
+    return null
+  }
+
   const onPlaceAndBill = async () => {
     setFormError(null)
     setLastInvoice(null)
 
     const normalizedItems = draftItems
-      .filter((row) => row.menu_item_id)
+      .filter((row) => row?.menu_item_id)
       .map((row) => ({
-        menu_item_id: row.menu_item_id,
-        quantity: Number(row.quantity),
+        menu_item_id: row?.menu_item_id,
+        quantity: Number(row?.quantity),
       }))
 
     if (normalizedItems.length === 0) {
@@ -256,15 +265,15 @@ export default function TakeawayPage() {
                   </TableCell>
                 </TableRow>
               ) : null}
-              {history.map((order) => (
+              {history.length > 0 && history.map((order) => (
                 <TableRow key={order.id}>
                   <TableCell className="font-medium">{order.id}</TableCell>
                   <TableCell>
                     {order.items
-                      .map((item) => `${item.menu_item_name} x${item.quantity}`)
+                      .map((item) => `${item?.menu_item_name ?? "Unknown"} x${item?.quantity ?? 0}`)
                       .join(", ")}
                   </TableCell>
-                  <TableCell>₹{order.total.toFixed(2)}</TableCell>
+                  <TableCell>₹{(order.total ?? 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{order.status}</Badge>
                   </TableCell>
