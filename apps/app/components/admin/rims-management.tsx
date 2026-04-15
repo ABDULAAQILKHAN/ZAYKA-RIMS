@@ -34,9 +34,19 @@ import {
   useUpdateTableMutation,
 } from "@/store/api"
 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@zayka/ui"
+
 type TableDraft = {
   tableNumber: string
-  capacity: string
+  seats: string
+  tableNearWindow: boolean
+  status: 'available' | 'occupied' | 'reserved'
 }
 
 function TableFormDialog({
@@ -47,17 +57,20 @@ function TableFormDialog({
 }: {
   existingTables: DiningTable[]
   table?: DiningTable
-  onSave: (payload: { tableNumber: number; capacity?: number }, isEdit: boolean) => Promise<void>
+  onSave: (payload: any, isEdit: boolean) => Promise<void>
   isSaving: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  const isEdit = Boolean(table)
+
   const [draft, setDraft] = useState<TableDraft>({
     tableNumber: table?.tableNumber != null ? String(table.tableNumber) : "",
-    capacity: table?.capacity != null ? String(table.capacity) : "",
+    seats: table?.seats != null ? String(table.seats) : "",
+    tableNearWindow: table?.tableNearWindow || false,
+    status: table?.status || "available",
   })
-
-  const isEdit = Boolean(table)
 
   const normalizedTableNumbers = useMemo(
     () =>
@@ -71,7 +84,9 @@ function TableFormDialog({
     setError(null)
     setDraft({
       tableNumber: table?.tableNumber != null ? String(table.tableNumber) : "",
-      capacity: table?.capacity != null ? String(table.capacity) : "",
+      seats: table?.seats != null ? String(table.seats) : "",
+      tableNearWindow: table?.tableNearWindow || false,
+      status: table?.status || "available",
     })
   }
 
@@ -84,8 +99,15 @@ function TableFormDialog({
 
   const submit = async () => {
     setError(null)
-    const tableNumberStr = draft.tableNumber.trim()
+    
+    if (isEdit) {
+      // Backend contract for patching specific Table only requires Status.
+      await onSave({ status: draft.status }, isEdit)
+      setOpen(false)
+      return
+    }
 
+    const tableNumberStr = draft.tableNumber.trim()
     if (!tableNumberStr) {
       setError("Table number is required")
       return
@@ -97,27 +119,26 @@ function TableFormDialog({
       return
     }
 
-    if (normalizedTableNumbers && normalizedTableNumbers.length > 0 && normalizedTableNumbers.includes(parsedTableNumber)) {
+    if (normalizedTableNumbers && (normalizedTableNumbers as number[]).length > 0 && (normalizedTableNumbers as number[]).includes(parsedTableNumber)) {
       setError("Table number must be unique")
       return
     }
 
-    const payload: { tableNumber: number; capacity?: number } = {
+    const payload: any = {
       tableNumber: parsedTableNumber,
+      tableNearWindow: draft.tableNearWindow,
     }
 
-    if (isEdit) {
-      const parsedCapacity =
-        draft.capacity.trim().length > 0 ? Number(draft.capacity) : undefined
-      if (
-        draft.capacity.trim().length > 0 &&
-        (typeof parsedCapacity !== "number" || Number.isNaN(parsedCapacity) || parsedCapacity <= 0)
-      ) {
-        setError("Capacity must be a positive number")
-        return
-      }
-      payload.capacity = parsedCapacity
+    const parsedSeats =
+      draft.seats.trim().length > 0 ? Number(draft.seats) : undefined
+    if (
+      draft.seats.trim().length > 0 &&
+      (typeof parsedSeats !== "number" || Number.isNaN(parsedSeats) || parsedSeats <= 0)
+    ) {
+      setError("Seats must be a positive number")
+      return
     }
+    if (parsedSeats !== undefined) payload.seats = parsedSeats
 
     await onSave(payload, isEdit)
     setOpen(false)
@@ -139,42 +160,85 @@ function TableFormDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Table" : "Create Table"}</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Table Status" : "Create Table"}</DialogTitle>
           <DialogDescription>
-            Maintain dining table metadata for RIMS operations.
+            {isEdit 
+              ? "Update table status. According to the architecture rules, table numbers and physical capacity cannot be changed after initial setup."
+              : "Maintain dining table metadata for RIMS operations."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="tableNumber">Table Number</Label>
-            <Input
-              id="tableNumber"
-              type="number"
-              min={1}
-              value={draft.tableNumber}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, tableNumber: event.target.value }))
-              }
-              placeholder="12"
-            />
-          </div>
+          {!isEdit && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="tableNumber">Table Number</Label>
+                <Input
+                  id="tableNumber"
+                  type="number"
+                  min={1}
+                  value={draft.tableNumber}
+                  onChange={(event) =>
+                    setDraft((prev) => ({ ...prev, tableNumber: event.target.value }))
+                  }
+                  placeholder="12"
+                />
+              </div>
 
-          {isEdit ? (
+              <div className="space-y-2">
+                <Label htmlFor="seats">Seats (Optional, Default is 4)</Label>
+                <Input
+                  id="seats"
+                  type="number"
+                  min={1}
+                  value={draft.seats}
+                  onChange={(event) =>
+                    setDraft((prev) => ({ ...prev, seats: event.target.value }))
+                  }
+                  placeholder="4"
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 mt-4">
+                <input
+                  type="checkbox"
+                  id="tableNearWindow"
+                  className="h-4 w-4 rounded border-gray-300 text-zayka-600 focus:ring-zayka-600"
+                  checked={draft.tableNearWindow}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setDraft((prev) => ({ ...prev, tableNearWindow: e.target.checked }))
+                  }
+                />
+                <Label
+                  htmlFor="tableNearWindow"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Table near window
+                </Label>
+              </div>
+            </>
+          )}
+
+          {isEdit && (
             <div className="space-y-2">
-              <Label htmlFor="capacity">Capacity (Optional)</Label>
-              <Input
-                id="capacity"
-                type="number"
-                min={1}
-                value={draft.capacity}
-                onChange={(event) =>
-                  setDraft((prev) => ({ ...prev, capacity: event.target.value }))
+              <Label>Table Status</Label>
+              <Select
+                value={draft.status}
+                onValueChange={(value: 'available' | 'occupied' | 'reserved') =>
+                  setDraft((prev) => ({ ...prev, status: value }))
                 }
-                placeholder="4"
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="occupied">Occupied</SelectItem>
+                  <SelectItem value="reserved">Reserved</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : null}
+          )}
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
@@ -229,7 +293,8 @@ export default function RimsManagement() {
             <TableHeader>
               <TableRow>
                 <TableHead>Table Number</TableHead>
-                <TableHead>Capacity</TableHead>
+                <TableHead>Seats</TableHead>
+                <TableHead>Window Side</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Active Orders</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -239,13 +304,14 @@ export default function RimsManagement() {
               {tables.length > 0 && tables.map((table) => (
                 <TableRow key={table.id}>
                   <TableCell className="font-medium">{table.tableNumber}</TableCell>
-                  <TableCell>{table.capacity ?? "-"}</TableCell>
+                  <TableCell>{table.seats ?? 4}</TableCell>
+                  <TableCell>{table.tableNearWindow ? "Yes" : "No"}</TableCell>
                   <TableCell>
-                    <Badge variant={table.status === "available" ? "outline" : "secondary"}>
+                    <Badge variant={table.status === "available" ? "outline" : table.status === "occupied" ? "secondary" : "default"}>
                       {table.status}
                     </Badge>
                   </TableCell>
-                  <TableCell>{table.active_order_count}</TableCell>
+                  <TableCell>{table.activeOrderCount}</TableCell>
                   <TableCell className="space-x-2 text-right">
                     <TableFormDialog
                       existingTables={tables}

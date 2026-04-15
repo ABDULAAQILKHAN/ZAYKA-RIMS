@@ -15,9 +15,10 @@ export type AuthRole = 'admin' | 'manager'
 export type DiningTable = {
   id: string
   tableNumber: number
-  capacity?: number
-  status: 'available' | 'occupied'
-  active_order_count: number
+  seats?: number
+  tableNearWindow?: boolean
+  status: 'available' | 'occupied' | 'reserved'
+  activeOrderCount: number
 }
 
 export type OrderType = 'table' | 'delivery'
@@ -80,16 +81,16 @@ export const rimsContractApi = createApi({
       providesTags: ['Table'],
     }),
 
-    createTable: builder.mutation<DiningTable, { tableNumber: number }>({
+    createTable: builder.mutation<DiningTable, { tableNumber: number; seats?: number; tableNearWindow?: boolean }>({
       query: (payload) => ({
         url: 'tables',
         method: 'POST',
-        body: { tableNumber: payload.tableNumber },
+        body: payload,
       }),
       invalidatesTags: ['Table'],
     }),
 
-    updateTable: builder.mutation<DiningTable, { id: string; tableNumber: number; capacity?: number }>({
+    updateTable: builder.mutation<DiningTable, { id: string; status: 'available' | 'occupied' | 'reserved' }>({
       query: ({ id, ...payload }) => ({
         url: `tables/${id}`,
         method: 'PATCH',
