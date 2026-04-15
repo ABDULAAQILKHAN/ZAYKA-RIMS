@@ -26,9 +26,9 @@ export default function DashboardPage() {
   const [period, setPeriod] = useState<InsightsPeriod>("week")
   const { data: insights, isLoading: insightsLoading } = useGetInsightsQuery({ period })
 
-  const occupiedTables = tables.filter((t) => t.status === "occupied")
+  const occupiedTables = tables?.length > 0 ? tables.filter((t) => t.status === "occupied") : []
   const todayStr = new Date().toISOString().slice(0, 10)
-  const todayRevenue = insights?.daily_revenue.find((d) => d.date === todayStr)?.revenue ?? 0
+  const todayRevenue = insights?.daily_revenue?.find((d) => d.date === todayStr)?.revenue ?? 0
 
   return (
     <div className="space-y-8 p-6">
@@ -44,11 +44,11 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Tables</CardDescription>
-            <CardTitle className="text-3xl">{tablesLoading ? "…" : tables.length}</CardTitle>
+            <CardTitle className="text-3xl">{tablesLoading ? "…" : (tables?.length ?? 0)}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              {occupiedTables.length} occupied · {tables.length - occupiedTables.length} available
+              {occupiedTables.length} occupied · {(tables?.length ?? 0) - occupiedTables.length} available
             </p>
           </CardContent>
         </Card>
@@ -56,12 +56,12 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Active Orders</CardDescription>
-            <CardTitle className="text-3xl">{ordersLoading ? "…" : orders.length}</CardTitle>
+            <CardTitle className="text-3xl">{ordersLoading ? "…" : (orders?.length ?? 0)}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
-              {orders.filter((o) => o.order_type === "table").length} table ·{" "}
-              {orders.filter((o) => o.order_type === "takeaway").length} takeaway
+              {orders?.length > 0 ? orders.filter((o) => o.order_type === "table").length : 0} table ·{" "}
+              {orders?.length > 0 ? orders.filter((o) => o.order_type === "takeaway").length : 0} takeaway 
             </p>
           </CardContent>
         </Card>
@@ -69,7 +69,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Open Sessions</CardDescription>
-            <CardTitle className="text-3xl">{sessions.length}</CardTitle>
+            <CardTitle className="text-3xl">{sessions?.length > 0 ? sessions.length : 0}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
@@ -81,7 +81,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Today&apos;s Revenue</CardDescription>
-            <CardTitle className="text-3xl">₹{todayRevenue.toFixed(0)}</CardTitle>
+            <CardTitle className="text-3xl">₹{insightsLoading ? "…" : (todayRevenue ?? 0).toFixed(0)}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">
@@ -95,8 +95,8 @@ export default function DashboardPage() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Active Tables</h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {tables.map((table) => {
-            const tableSession = sessions.find((s) => s.table_id === table.id)
+          {tables?.length > 0 && tables.map((table) => {
+            const tableSession = sessions?.find((s) => s.table_id === table.id)
             return (
               <Card key={table.id} className={table.status === "occupied" ? "border-primary/40" : ""}>
                 <CardHeader className="pb-2">
@@ -114,13 +114,13 @@ export default function DashboardPage() {
                   {tableSession ? (
                     <>
                       <p className="text-sm">
-                        Orders: <span className="font-medium">{tableSession.orders.length}</span>
+                        Orders: <span className="font-medium">{tableSession.orders?.length ?? 0}</span>
                       </p>
                       <p className="text-sm">
-                        Running total: <span className="font-semibold">₹{tableSession.total.toFixed(2)}</span>
+                        Running total: <span className="font-semibold">₹{(tableSession.total ?? 0).toFixed(2)}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Session since {new Date(tableSession.created_at).toLocaleTimeString()}
+                        Session since {tableSession.created_at ? new Date(tableSession.created_at).toLocaleTimeString() : "N/A"}
                       </p>
                     </>
                   ) : (
@@ -142,14 +142,14 @@ export default function DashboardPage() {
       <section className="space-y-4">
         <h2 className="text-xl font-semibold">Active Orders</h2>
         <div className="space-y-3">
-          {orders.length === 0 && !ordersLoading ? (
+          {(orders?.length === 0 && !ordersLoading) ? (
             <Card>
               <CardContent className="pt-6 text-sm text-muted-foreground">
                 No active orders at the moment.
               </CardContent>
             </Card>
           ) : null}
-          {orders.map((order) => (
+          {orders?.length > 0 && orders.map((order) => (
             <Card key={order.id}>
               <CardContent className="flex flex-col gap-3 pt-6 md:flex-row md:items-center md:justify-between">
                 <div>
@@ -167,10 +167,10 @@ export default function DashboardPage() {
                       : order.order_type === "takeaway"
                       ? "Takeaway"
                       : "Delivery"}{" "}
-                    · ₹{order.total.toFixed(2)}
+                    · ₹{(order.total ?? 0).toFixed(2)}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {order.items.map((i) => `${i.menu_item_name} x${i.quantity}`).join(", ")}
+                    {order.items?.map((i: any) => `${i.menu_item_name} x${i.quantity}`).join(", ") ?? ""}
                   </p>
                 </div>
                 <Badge variant="outline">{order.status}</Badge>
@@ -218,19 +218,19 @@ export default function DashboardPage() {
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Total Revenue</CardDescription>
-                  <CardTitle className="text-2xl">₹{insights.total_revenue.toFixed(2)}</CardTitle>
+                  <CardTitle className="text-2xl">₹{(insights.total_revenue ?? 0).toFixed(2)}</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Total Orders</CardDescription>
-                  <CardTitle className="text-2xl">{insights.total_orders}</CardTitle>
+                  <CardTitle className="text-2xl">{insights.total_orders ?? 0}</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Avg. Order Value</CardDescription>
-                  <CardTitle className="text-2xl">₹{insights.average_order_value.toFixed(2)}</CardTitle>
+                  <CardTitle className="text-2xl">₹{(insights.average_order_value ?? 0).toFixed(2)}</CardTitle>
                 </CardHeader>
               </Card>
             </div>
@@ -243,11 +243,12 @@ export default function DashboardPage() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {(["table", "takeaway", "delivery"] as const).map((type) => {
-                    const count = insights.order_type_breakdown[type]
+                    const breakdown = insights.order_type_breakdown ?? {}
+                    const count = breakdown[type] ?? 0
                     const maxCount = Math.max(
-                      insights.order_type_breakdown.table,
-                      insights.order_type_breakdown.takeaway,
-                      insights.order_type_breakdown.delivery,
+                      breakdown.table ?? 0,
+                      breakdown.takeaway ?? 0,
+                      breakdown.delivery ?? 0,
                       1,
                     )
                     return (
@@ -274,11 +275,11 @@ export default function DashboardPage() {
                   <CardTitle className="text-base">Top Menu Items</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {insights.top_items.length === 0 ? (
+                  {(!insights.top_items || insights.top_items.length === 0) ? (
                     <p className="text-sm text-muted-foreground">No data available</p>
                   ) : null}
-                  {insights.top_items.map((item, idx) => {
-                    const maxRevenue = insights.top_items[0]?.revenue || 1
+                  {insights.top_items?.map((item, idx) => {
+                    const maxRevenue = insights.top_items?.[0]?.revenue || 1
                     return (
                       <div key={item.name} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
@@ -307,14 +308,14 @@ export default function DashboardPage() {
                   <CardTitle className="text-base">Table Utilization</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {insights.table_utilization.length === 0 ? (
+                  {(!insights.table_utilization || insights.table_utilization.length === 0) ? (
                     <p className="text-sm text-muted-foreground">No session data available</p>
                   ) : null}
-                  {insights.table_utilization.map((t) => (
+                  {insights.table_utilization?.map((t) => (
                     <div key={t.table_number} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
                       <span className="font-medium">{t.table_number}</span>
                       <span>
-                        {t.session_count} session{t.session_count !== 1 ? "s" : ""} · ₹{t.total_revenue.toFixed(2)}
+                        {t.session_count} session{t.session_count !== 1 ? "s" : ""} · ₹{(t.total_revenue ?? 0).toFixed(2)}
                       </span>
                     </div>
                   ))}
@@ -327,14 +328,14 @@ export default function DashboardPage() {
                   <CardTitle className="text-base">Daily Revenue</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {insights.daily_revenue.filter((d) => d.order_count > 0).length === 0 ? (
+                  {(insights.daily_revenue?.filter((d) => d.order_count > 0).length === 0) ? (
                     <p className="text-sm text-muted-foreground">No revenue data for this period</p>
                   ) : null}
                   {insights.daily_revenue
-                    .filter((d) => d.order_count > 0)
+                    ?.filter((d) => d.order_count > 0)
                     .slice(-7)
                     .map((d) => {
-                      const maxRev = Math.max(...insights.daily_revenue.map((dr) => dr.revenue), 1)
+                      const maxRev = Math.max(...(insights.daily_revenue?.map((dr) => dr.revenue) ?? []), 1)
                       return (
                         <div key={d.date} className="space-y-1">
                           <div className="flex items-center justify-between text-sm">
@@ -346,7 +347,7 @@ export default function DashboardPage() {
                               })}
                             </span>
                             <span className="font-medium">
-                              ₹{d.revenue.toFixed(0)} ({d.order_count} orders)
+                              ₹{(d.revenue ?? 0).toFixed(0)} ({d.order_count} orders)
                             </span>
                           </div>
                           <div className="h-2 rounded-full bg-muted">

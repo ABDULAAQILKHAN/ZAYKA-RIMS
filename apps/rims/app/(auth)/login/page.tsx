@@ -12,18 +12,61 @@ import {
   Input,
   Label,
 } from "@zayka/ui"
-import { useLoginMutation } from "@/store/api"
+import { createClient } from "@zayka/auth/client"
 import { useAppDispatch } from "@/store/hooks"
 import { setToken } from "@/store/auth-slice"
+import toast from "react-hot-toast"
 
 export default function LoginPage() {
   const router = useRouter()
   const dispatch = useAppDispatch()
-  const [login, { isLoading }] = useLoginMutation()
+  const supabase = createClient()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Handle tokens in URL hash (for invite/magic links)
+  useEffect(() => {
+    const handleTokensInHash = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1))
+      const accessToken = hashParams.get('access_token')
+      const refreshToken = hashParams.get('refresh_token')
+
+      if (accessToken && refreshToken) {
+        try {
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          })
+
+          if (error) {
+            toast.error(error.message)
+            window.history.replaceState({}, document.title, window.location.pathname)
+            return
+          }
+
+          if (data.session) {
+            dispatch(setToken(data.session.access_token))
+            const role = data.session.user.user_metadata?.role || 'staff'
+            toast.success('Logged in successfully!')
+            
+            if (role === 'admin' || role === 'manager' || role === 'staff') {
+              router.push('/dashboard')
+            } else {
+              setError("Unauthorized access: Incorrect role")
+              await supabase.auth.signOut()
+            }
+          }
+        } catch (err) {
+          console.error('Auth error:', err)
+        }
+      }
+    }
+
+    handleTokensInHash()
+  }, [supabase, dispatch, router])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -35,23 +78,37 @@ export default function LoginPage() {
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
+    setIsLoading(true)
 
     try {
-      const result = await login({ email, password }).unwrap()
-      dispatch(setToken(result.token))
-      localStorage.setItem("rims_user", JSON.stringify(result.user))
-      localStorage.setItem("rims_role", result.role)
-      router.push("/dashboard")
-    } catch (err) {
-      const message =
-        typeof err === "object" &&
-        err !== null &&
-        "data" in err &&
-        typeof (err as { data?: { message?: string } }).data?.message === "string"
-          ? (err as { data: { message: string } }).data.message
-          : "Login failed"
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-      setError(message)
+      if (error) {
+        setError(error.message)
+        setIsLoading(false)
+        return
+      }
+
+      if (data.session) {
+        const role = data.session.user.user_metadata?.role || 'staff'
+        
+        // RIMS is for admin, manager, and staff
+        if (role === 'admin' || role === 'manager' || role === 'staff') {
+          dispatch(setToken(data.session.access_token))
+          toast.success('Logged in successfully!')
+          router.push("/dashboard")
+        } else {
+          setError("Unauthorized access: Incorrect role")
+          await supabase.auth.signOut()
+        }
+      }
+    } catch (err) {
+      setError("Login failed")
+    } finally {
+      setIsLoading(false)
     }
   }
 

@@ -61,7 +61,7 @@ function TableFormDialog({
 
   const normalizedTableNumbers = useMemo(
     () =>
-      existingTables
+      existingTables.length > 0 && existingTables
         .filter((entry) => entry.id !== table?.id)
         .map((entry) => entry.table_number.trim().toLowerCase()),
     [existingTables, table?.id],
@@ -91,7 +91,7 @@ function TableFormDialog({
       return
     }
 
-    if (normalizedTableNumbers.includes(tableNumber.toLowerCase())) {
+    if (normalizedTableNumbers && normalizedTableNumbers.length > 0 && normalizedTableNumbers.includes(tableNumber.toLowerCase())) {
       setError("Table number must be unique")
       return
     }
@@ -223,7 +223,7 @@ export default function RimsManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {tables.map((table) => (
+              {tables.length > 0 && tables.map((table) => (
                 <TableRow key={table.id}>
                   <TableCell className="font-medium">{table.table_number}</TableCell>
                   <TableCell>{table.capacity ?? "-"}</TableCell>

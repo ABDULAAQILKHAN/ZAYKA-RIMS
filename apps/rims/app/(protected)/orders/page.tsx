@@ -62,16 +62,16 @@ export default function OrdersPage() {
   const [draftItems, setDraftItems] = useState<DraftItem[]>([{ menu_item_id: "", quantity: "1" }])
   const [formError, setFormError] = useState<string | null>(null)
 
-  const availableMenu = menu.filter((item) => item.is_available)
+  const availableMenu = useMemo(() => (menu?.length > 0 ? menu?.filter((item) => item?.is_available) : []), [menu])
 
   const subtotalPreview = useMemo(
     () =>
       draftItems.reduce((sum, row) => {
-        const menuItem = availableMenu.find((entry) => entry.id === row.menu_item_id)
+        const menuItem = availableMenu.find((entry) => entry?.id === row?.menu_item_id)
         if (!menuItem) {
           return sum
         }
-        return sum + menuItem.price * Number(row.quantity || 0)
+        return sum + (menuItem?.price ?? 0) * Number(row?.quantity || 0)
       }, 0),
     [availableMenu, draftItems],
   )
@@ -81,7 +81,7 @@ export default function OrdersPage() {
 
   // Show which table has an existing open session
   const getTableLabel = (tableId: string, tableNumber: string) => {
-    const hasSession = sessions.some((s) => s.table_id === tableId)
+    const hasSession = sessions?.some((s) => s?.table_id === tableId)
     return hasSession ? `${tableNumber} (active session)` : tableNumber
   }
 
@@ -89,10 +89,10 @@ export default function OrdersPage() {
     setFormError(null)
 
     const normalizedItems = draftItems
-      .filter((row) => row.menu_item_id)
+      .filter((row) => row?.menu_item_id)
       .map((row) => ({
-        menu_item_id: row.menu_item_id,
-        quantity: Number(row.quantity),
+        menu_item_id: row?.menu_item_id,
+        quantity: Number(row?.quantity),
       }))
 
     if (normalizedItems.length === 0) {
@@ -126,10 +126,6 @@ export default function OrdersPage() {
       setFormError(message)
     }
   }
-
-  // Group table orders by session
-  const tableOrders = orders.filter((o) => o.order_type === "table")
-  const takeawayOrders = orders.filter((o) => o.order_type === "takeaway")
 
   return (
     <div className="space-y-6 p-6">
@@ -171,9 +167,9 @@ export default function OrdersPage() {
                     <SelectValue placeholder="Choose table" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tables.map((table) => (
-                      <SelectItem key={table.id} value={table.id}>
-                        {getTableLabel(table.id, table.table_number)}
+                    {tables?.length > 0 && tables?.map((table) => (
+                      <SelectItem key={table?.id} value={table?.id}>
+                        {getTableLabel(table?.id, table?.table_number)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -183,9 +179,9 @@ export default function OrdersPage() {
           </div>
 
           {draftItems.map((row, index) => (
-            <div key={`${row.menu_item_id}-${index}`} className="grid gap-3 md:grid-cols-4">
+            <div key={`${row?.menu_item_id}-${index}`} className="grid gap-3 md:grid-cols-4">
               <Select
-                value={row.menu_item_id}
+                value={row?.menu_item_id}
                 onValueChange={(value) =>
                   setDraftItems((prev) =>
                     prev.map((item, rowIndex) =>
@@ -198,9 +194,9 @@ export default function OrdersPage() {
                   <SelectValue placeholder="Select menu item" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableMenu.map((item) => (
-                    <SelectItem key={item.id} value={item.id}>
-                      {item.name} (₹{item.price})
+                  {availableMenu?.map((item) => (
+                    <SelectItem key={item?.id} value={item?.id}>
+                      {item?.name} (₹{item?.price ?? 0})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -209,7 +205,7 @@ export default function OrdersPage() {
               <Input
                 type="number"
                 min="1"
-                value={row.quantity}
+                value={row?.quantity}
                 onChange={(event) =>
                   setDraftItems((prev) =>
                     prev.map((item, rowIndex) =>
@@ -274,38 +270,38 @@ export default function OrdersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {sessions.length === 0 ? (
+          {(!sessions || sessions?.length === 0) ? (
             <p className="text-sm text-muted-foreground">No active table sessions.</p>
           ) : (
             <div className="space-y-4">
-              {sessions.map((session) => (
-                <div key={session.id} className="rounded-lg border p-4 space-y-3">
+              {sessions?.length > 0 && sessions?.map((session) => (
+                <div key={session?.id} className="rounded-lg border p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold">{session.table_number}</p>
+                      <p className="font-semibold">{session?.table_number}</p>
                       <p className="text-xs text-muted-foreground">
-                        Session {session.id} · Started {new Date(session.created_at).toLocaleTimeString()}
+                        Session {session?.id} · Started {session?.created_at ? new Date(session.created_at).toLocaleTimeString() : "N/A"}
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">₹{session.total.toFixed(2)}</p>
+                      <p className="font-semibold">₹{(session?.total ?? 0).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {session.orders.length} order{session.orders.length !== 1 ? "s" : ""}
+                        {session?.orders?.length ?? 0} order{(session?.orders?.length ?? 0) !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
                   <div className="space-y-2">
-                    {session.orders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-sm">
+                    {session?.orders?.map((order) => (
+                      <div key={order?.id} className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-sm">
                         <div>
-                          <span className="font-medium">#{order.id}</span>
+                          <span className="font-medium">#{order?.id}</span>
                           <span className="ml-2 text-muted-foreground">
-                            {order.items.map((i) => `${i.menu_item_name} x${i.quantity}`).join(", ")}
+                            {order?.items?.map((i: any) => `${i?.menu_item_name} x${i?.quantity}`).join(", ") ?? ""}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span>₹{order.total.toFixed(2)}</span>
-                          <Badge variant="outline" className="text-xs">{order.status}</Badge>
+                          <span>₹{(order?.total ?? 0).toFixed(2)}</span>
+                          <Badge variant="outline" className="text-xs">{order?.status}</Badge>
                         </div>
                       </div>
                     ))}
@@ -334,36 +330,36 @@ export default function OrdersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => (
-                <TableRow key={order.id}>
+              {orders?.map((order) => (
+                <TableRow key={order?.id}>
                   <TableCell className="font-medium">
-                    {order.id}
-                    {order.session_id ? (
+                    {order?.id}
+                    {order?.session_id ? (
                       <span className="block text-xs text-muted-foreground">
-                        Session: {order.session_id}
+                        Session: {order?.session_id}
                       </span>
                     ) : null}
                   </TableCell>
                   <TableCell>
-                    {order.order_type === "table"
-                      ? `Table ${order.table_number ?? "-"}`
-                      : order.order_type === "takeaway"
+                    {order?.order_type === "table"
+                      ? `Table ${order?.table_number ?? "-"}`
+                      : order?.order_type === "takeaway"
                       ? "Takeaway"
                       : "Delivery"}
                   </TableCell>
                   <TableCell>
-                    {order.items
-                      .map((item) => `${item.menu_item_name} x${item.quantity}`)
-                      .join(", ")}
+                    {order?.items
+                      ?.map((item: any) => `${item?.menu_item_name} x${item?.quantity}`)
+                      .join(", ") ?? ""}
                   </TableCell>
-                  <TableCell>₹{order.total.toFixed(2)}</TableCell>
+                  <TableCell>₹{(order?.total ?? 0).toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">{order.status}</Badge>
+                      <Badge variant="outline">{order?.status}</Badge>
                       <Select
-                        value={order.status}
+                        value={order?.status}
                         onValueChange={(value) =>
-                          updateStatus({ id: order.id, status: value as OrderStatus })
+                          updateStatus({ id: order?.id, status: value as OrderStatus })
                         }
                       >
                         <SelectTrigger className="w-40">
@@ -384,7 +380,13 @@ export default function OrdersPage() {
               {isLoading || updatingStatus ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    Loading orders...
+                    {isLoading ? "Loading orders..." : "Updating status..."}
+                  </TableCell>
+                </TableRow>
+              ) : orders?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    No active orders found.
                   </TableCell>
                 </TableRow>
               ) : null}
