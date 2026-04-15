@@ -20,7 +20,7 @@ export interface OrderItem {
 
 export interface Order {
     id: string
-    user_id: string
+    userId: string
     items: OrderItem[]
     total: number
     status: 'pending' | 'preparing' | 'ready' | 'out-for-delivery' | 'delivered' | 'cancelled'
@@ -33,10 +33,16 @@ export interface Order {
     customerPhone?: string
 }
 
-// Minimal payload for creating order - backend will fetch cart and calculate total
 export interface CreateOrderInput {
-    addressId: string  // Reference to saved address
+    orderType: 'delivery' | 'takeaway' | 'dine-in'
+    tableId?: string
+    addressId?: string
     deliveryInstructions?: string
+    items: {
+        id: string
+        quantity: number
+        size?: string
+    }[]
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL as string

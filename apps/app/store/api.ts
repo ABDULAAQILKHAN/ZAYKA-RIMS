@@ -14,7 +14,7 @@ export type AuthRole = 'admin' | 'manager'
 
 export type DiningTable = {
   id: string
-  table_number: string
+  tableNumber: number
   capacity?: number
   status: 'available' | 'occupied'
   active_order_count: number
@@ -74,19 +74,22 @@ export const rimsContractApi = createApi({
   endpoints: (builder) => ({
     getTables: builder.query<DiningTable[], void>({
       query: () => 'tables',
+      transformResponse: (response: { data: DiningTable[] } | DiningTable[]) => {
+        return 'data' in response ? response.data : response;
+      },
       providesTags: ['Table'],
     }),
 
-    createTable: builder.mutation<DiningTable, Pick<DiningTable, 'table_number' | 'capacity'>>({
+    createTable: builder.mutation<DiningTable, { tableNumber: number }>({
       query: (payload) => ({
         url: 'tables',
         method: 'POST',
-        body: payload,
+        body: { tableNumber: payload.tableNumber },
       }),
       invalidatesTags: ['Table'],
     }),
 
-    updateTable: builder.mutation<DiningTable, { id: string; table_number: string; capacity?: number }>({
+    updateTable: builder.mutation<DiningTable, { id: string; tableNumber: number; capacity?: number }>({
       query: ({ id, ...payload }) => ({
         url: `tables/${id}`,
         method: 'PATCH',

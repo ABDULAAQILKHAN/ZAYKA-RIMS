@@ -95,8 +95,14 @@ export default function CheckoutForm() {
 
     try {
       await createOrder({
+        orderType: 'delivery',
         addressId: selectedAddressId,
-        deliveryInstructions: data.instructions || undefined
+        deliveryInstructions: data.instructions || undefined,
+        items: items.map(item => ({
+          id: item.id, // the cartItem.id is the menu item id
+          quantity: item.quantity,
+          size: item.size
+        }))
       }).unwrap()
 
       await clearCart().unwrap()

@@ -135,7 +135,7 @@ export default function BillingPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <p className="text-lg font-semibold">{session?.table_number ?? "Unknown"}</p>
+                      <p className="text-lg font-semibold">{session?.tableNumber ?? "Unknown"}</p>
                       <Badge variant="default">Occupied</Badge>
                     </div>
                     <div className="mt-2 space-y-1 text-sm text-muted-foreground">
@@ -158,7 +158,7 @@ export default function BillingPage() {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>{selectedSession.table_number} — Session Details</CardTitle>
+                <CardTitle>{selectedSession.tableNumber} — Session Details</CardTitle>
                 <CardDescription>
                   Session {selectedSession.id} · Started{" "}
                   {selectedSession.created_at ? new Date(selectedSession.created_at).toLocaleTimeString() : "N/A"}
@@ -267,8 +267,8 @@ export default function BillingPage() {
               {generatedInvoice.session_id ? (
                 <p>Session ID: {generatedInvoice.session_id}</p>
               ) : null}
-              {generatedInvoice.table_number ? (
-                <p>Table: {generatedInvoice.table_number}</p>
+              {generatedInvoice.tableNumber ? (
+                <p>Table: {generatedInvoice.tableNumber}</p>
               ) : null}
               <p>Type: {generatedInvoice.order_type}</p>
               <p>Date: {generatedInvoice.created_at ? new Date(generatedInvoice.created_at).toLocaleString() : "N/A"}</p>

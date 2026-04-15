@@ -72,7 +72,7 @@ export default function HistoryPage() {
                 <SelectItem value="all">All Tables</SelectItem>
                 {tables?.length > 0 && tables.map((table) => (
                   <SelectItem key={table?.id} value={table?.id}>
-                    {table?.table_number ?? "Unknown"}
+                    {table?.tableNumber ?? "Unknown"}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -131,7 +131,7 @@ export default function HistoryPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {order?.table_number ?? "-"}
+                    {order?.tableNumber ?? "-"}
                     {order?.session_id ? (
                       <span className="block text-xs text-muted-foreground">
                         {order?.session_id}

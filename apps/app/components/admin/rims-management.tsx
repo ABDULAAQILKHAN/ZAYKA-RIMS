@@ -35,7 +35,7 @@ import {
 } from "@/store/api"
 
 type TableDraft = {
-  table_number: string
+  tableNumber: string
   capacity: string
 }
 
@@ -47,14 +47,14 @@ function TableFormDialog({
 }: {
   existingTables: DiningTable[]
   table?: DiningTable
-  onSave: (payload: { table_number: string; capacity?: number }) => Promise<void>
+  onSave: (payload: { tableNumber: number; capacity?: number }, isEdit: boolean) => Promise<void>
   isSaving: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState<TableDraft>({
-    table_number: table?.table_number ?? "",
-    capacity: table?.capacity ? String(table.capacity) : "",
+    tableNumber: table?.tableNumber != null ? String(table.tableNumber) : "",
+    capacity: table?.capacity != null ? String(table.capacity) : "",
   })
 
   const isEdit = Boolean(table)
@@ -63,15 +63,15 @@ function TableFormDialog({
     () =>
       existingTables.length > 0 && existingTables
         .filter((entry) => entry.id !== table?.id)
-        .map((entry) => entry.table_number.trim().toLowerCase()),
+        .map((entry) => entry.tableNumber),
     [existingTables, table?.id],
   )
 
   const resetForm = () => {
     setError(null)
     setDraft({
-      table_number: table?.table_number ?? "",
-      capacity: table?.capacity ? String(table.capacity) : "",
+      tableNumber: table?.tableNumber != null ? String(table.tableNumber) : "",
+      capacity: table?.capacity != null ? String(table.capacity) : "",
     })
   }
 
@@ -84,32 +84,42 @@ function TableFormDialog({
 
   const submit = async () => {
     setError(null)
-    const tableNumber = draft.table_number.trim()
+    const tableNumberStr = draft.tableNumber.trim()
 
-    if (!tableNumber) {
+    if (!tableNumberStr) {
       setError("Table number is required")
       return
     }
 
-    if (normalizedTableNumbers && normalizedTableNumbers.length > 0 && normalizedTableNumbers.includes(tableNumber.toLowerCase())) {
+    const parsedTableNumber = Number(tableNumberStr)
+    if (Number.isNaN(parsedTableNumber) || parsedTableNumber < 1) {
+      setError("Table number must be a positive integer (e.g. 1, 2, 12)")
+      return
+    }
+
+    if (normalizedTableNumbers && normalizedTableNumbers.length > 0 && normalizedTableNumbers.includes(parsedTableNumber)) {
       setError("Table number must be unique")
       return
     }
 
-    const parsedCapacity =
-      draft.capacity.trim().length > 0 ? Number(draft.capacity) : undefined
-    if (
-      draft.capacity.trim().length > 0 &&
-      (typeof parsedCapacity !== "number" || Number.isNaN(parsedCapacity) || parsedCapacity <= 0)
-    ) {
-      setError("Capacity must be a positive number")
-      return
+    const payload: { tableNumber: number; capacity?: number } = {
+      tableNumber: parsedTableNumber,
     }
-    await onSave({
-      table_number: tableNumber,
-      capacity: parsedCapacity,
-    })
 
+    if (isEdit) {
+      const parsedCapacity =
+        draft.capacity.trim().length > 0 ? Number(draft.capacity) : undefined
+      if (
+        draft.capacity.trim().length > 0 &&
+        (typeof parsedCapacity !== "number" || Number.isNaN(parsedCapacity) || parsedCapacity <= 0)
+      ) {
+        setError("Capacity must be a positive number")
+        return
+      }
+      payload.capacity = parsedCapacity
+    }
+
+    await onSave(payload, isEdit)
     setOpen(false)
   }
 
@@ -137,30 +147,34 @@ function TableFormDialog({
 
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="table_number">Table Number</Label>
+            <Label htmlFor="tableNumber">Table Number</Label>
             <Input
-              id="table_number"
-              value={draft.table_number}
+              id="tableNumber"
+              type="number"
+              min={1}
+              value={draft.tableNumber}
               onChange={(event) =>
-                setDraft((prev) => ({ ...prev, table_number: event.target.value }))
+                setDraft((prev) => ({ ...prev, tableNumber: event.target.value }))
               }
-              placeholder="T12"
+              placeholder="12"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="capacity">Capacity (Optional)</Label>
-            <Input
-              id="capacity"
-              type="number"
-              min={1}
-              value={draft.capacity}
-              onChange={(event) =>
-                setDraft((prev) => ({ ...prev, capacity: event.target.value }))
-              }
-              placeholder="4"
-            />
-          </div>
+          {isEdit ? (
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacity (Optional)</Label>
+              <Input
+                id="capacity"
+                type="number"
+                min={1}
+                value={draft.capacity}
+                onChange={(event) =>
+                  setDraft((prev) => ({ ...prev, capacity: event.target.value }))
+                }
+                placeholder="4"
+              />
+            </div>
+          ) : null}
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
@@ -205,7 +219,7 @@ export default function RimsManagement() {
           <TableFormDialog
             existingTables={tables}
             isSaving={creatingTable}
-            onSave={async (payload) => {
+            onSave={async (payload, isEdit) => {
               await createTable(payload).unwrap()
             }}
           />
@@ -224,7 +238,7 @@ export default function RimsManagement() {
             <TableBody>
               {tables.length > 0 && tables.map((table) => (
                 <TableRow key={table.id}>
-                  <TableCell className="font-medium">{table.table_number}</TableCell>
+                  <TableCell className="font-medium">{table.tableNumber}</TableCell>
                   <TableCell>{table.capacity ?? "-"}</TableCell>
                   <TableCell>
                     <Badge variant={table.status === "available" ? "outline" : "secondary"}>

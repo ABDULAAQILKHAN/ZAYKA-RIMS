@@ -89,7 +89,7 @@ export default function StaffOrderManagement() {
                                     <TableCell>{order.customerName || "Walk-in Customer"}</TableCell>
                                     <TableCell>
                                         <div className="flex flex-col gap-1">
-                                            {order.items.map((item, i) => (
+                                            {(order.items || []).map((item, i) => (
                                                 <span key={i} className="text-xs">
                                                     {item.quantity}x {item.name}
                                                 </span>

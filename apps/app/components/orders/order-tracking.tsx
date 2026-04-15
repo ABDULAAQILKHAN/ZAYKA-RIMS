@@ -22,7 +22,7 @@ const statusSteps = [
 export default function OrderTracking() {
   const [searchQuery, setSearchQuery] = useState("")
   const [pollingInterval, setPollingInterval] = useState(0)
-  
+
   const { data: orders = [], isLoading } = useGetMyOrdersQuery(undefined, {
     pollingInterval,
   })
@@ -124,7 +124,6 @@ function OrderCard({ order, showProgress = false }: OrderCardProps) {
               <CardTitle className="text-lg">{order.id}</CardTitle>
               <p className="text-sm text-muted-foreground">
                 {(() => {
-                  console.log("Dateeee:",order)
                   const formatted = formatOrderDate(order.createdAt)
                   return `${formatted.date} at ${formatted.time}`
                 })()}
@@ -141,7 +140,7 @@ function OrderCard({ order, showProgress = false }: OrderCardProps) {
           <div>
             <h4 className="font-medium mb-2">Items Ordered</h4>
             <div className="space-y-1">
-              {order.items.map((item, index) => (
+              {order.items?.length > 0 && order.items.map((item, index) => (
                 <div key={index} className="flex justify-between text-sm">
                   <span>
                     {item.quantity}x {item.name}

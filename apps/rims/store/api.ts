@@ -9,7 +9,7 @@ export type AuthRole = "admin" | "manager"
 
 export type TableRecord = {
   id: string
-  table_number: string
+  tableNumber: number
   capacity?: number
   status: "available" | "occupied"
   active_order_count: number
@@ -43,7 +43,7 @@ export type OrderRecord = {
   id: string
   order_type: OrderType
   table_id?: string
-  table_number?: string
+  tableNumber?: number
   session_id?: string
   status: OrderStatus
   items: Array<{
@@ -63,7 +63,7 @@ export type OrderRecord = {
 export type TableSession = {
   id: string
   table_id: string
-  table_number: string
+  tableNumber: number
   status: "open" | "closed"
   order_ids: string[]
   subtotal: number
@@ -78,7 +78,7 @@ export type InvoiceRecord = {
   order_id?: string
   session_id?: string
   order_type: OrderType
-  table_number?: string
+  tableNumber?: number
   items: OrderRecord["items"]
   subtotal: number
   gst: number
@@ -104,7 +104,7 @@ export type InsightsRecord = {
     revenue: number
   }>
   table_utilization: Array<{
-    table_number: string
+    tableNumber: number
     session_count: number
     total_revenue: number
   }>
@@ -137,18 +137,18 @@ export const rimsApi = createApi({
       providesTags: ["Table"],
     }),
 
-    createTable: builder.mutation<TableRecord, { table_number: string; capacity?: number }>({
+    createTable: builder.mutation<TableRecord, { tableNumber: number }>({
       query: (payload) => ({
         url: 'tables',
         method: 'POST',
-        body: payload,
+        body: { tableNumber: payload.tableNumber },
       }),
       invalidatesTags: ["Table"],
     }),
 
     updateTable: builder.mutation<
       TableRecord,
-      { id: string; table_number: string; capacity?: number }
+      { id: string; tableNumber: number; capacity?: number }
     >({
       query: ({ id, ...payload }) => ({
         url: `tables/${id}`,

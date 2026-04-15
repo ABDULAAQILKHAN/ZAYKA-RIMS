@@ -170,13 +170,13 @@ function OrdersTable({ orders, handleStatusChange }: { orders: Order[], handleSt
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex flex-col gap-1">
-                                        {order.items.slice(0, 3).map((item, i) => (
+                                        {(order.items || []).slice(0, 3).map((item, i) => (
                                             <span key={i} className="text-sm">
                                                 {item.quantity}x {item.name}
                                             </span>
                                         ))}
-                                        {order.items.length > 3 && (
-                                            <span className="text-xs text-muted-foreground">+{order.items.length - 3} more</span>
+                                        {(order.items?.length || 0) > 3 && (
+                                            <span className="text-xs text-muted-foreground">+{(order.items?.length || 0) - 3} more</span>
                                         )}
                                     </div>
                                 </TableCell>

@@ -89,9 +89,9 @@ export default function OrdersPage() {
   }
 
   // Show which table has an existing open session
-  const getTableLabel = (tableId: string, tableNumber: string) => {
+  const getTableLabel = (tableId: string, tableNumber: number) => {
     const hasSession = sessions?.some((s) => s?.table_id === tableId)
-    return hasSession ? `${tableNumber} (active session)` : tableNumber
+    return hasSession ? `${tableNumber} (active session)` : String(tableNumber)
   }
 
   const onCreateOrder = async () => {
@@ -178,7 +178,7 @@ export default function OrdersPage() {
                   <SelectContent>
                     {tables?.length > 0 && tables?.map((table) => (
                       <SelectItem key={table?.id} value={table?.id}>
-                        {getTableLabel(table?.id, table?.table_number)}
+                        {getTableLabel(table?.id, table?.tableNumber)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -287,7 +287,7 @@ export default function OrdersPage() {
                 <div key={session?.id} className="rounded-lg border p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-semibold">{session?.table_number}</p>
+                      <p className="font-semibold">{session?.tableNumber}</p>
                       <p className="text-xs text-muted-foreground">
                         Session {session?.id} · Started {session?.created_at ? new Date(session.created_at).toLocaleTimeString() : "N/A"}
                       </p>
@@ -351,7 +351,7 @@ export default function OrdersPage() {
                   </TableCell>
                   <TableCell>
                     {order?.order_type === "table"
-                      ? `Table ${order?.table_number ?? "-"}`
+                      ? `Table ${order?.tableNumber ?? "-"}`
                       : order?.order_type === "takeaway"
                       ? "Takeaway"
                       : "Delivery"}

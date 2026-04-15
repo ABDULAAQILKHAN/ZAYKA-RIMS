@@ -221,7 +221,7 @@ export default function AdminDashboard() {
                           <div>
                             <div className="font-medium">{order.customerName || "Walk-in Customer"}</div>
                             <div className="text-sm text-muted-foreground">
-                              {order.itemsSummary.join(", ")}
+                              {(order.itemsSummary || []).join(", ")}
                             </div>
                           </div>
                           <div className="flex flex-col items-end gap-1">

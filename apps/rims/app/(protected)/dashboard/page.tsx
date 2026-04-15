@@ -110,7 +110,7 @@ export default function DashboardPage() {
               <Card key={table.id} className={table.status === "occupied" ? "border-primary/40" : ""}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{table.table_number}</CardTitle>
+                    <CardTitle className="text-base">{table.tableNumber}</CardTitle>
                     <Badge variant={table.status === "occupied" ? "default" : "outline"}>
                       {table.status}
                     </Badge>
@@ -172,7 +172,7 @@ export default function DashboardPage() {
                   </p>
                   <p className="text-sm text-muted-foreground">
                     {order.order_type === "table"
-                      ? `Table ${order.table_number ?? "-"}`
+                      ? `Table ${order.tableNumber ?? "-"}`
                       : order.order_type === "takeaway"
                       ? "Takeaway"
                       : "Delivery"}{" "}
@@ -321,8 +321,8 @@ export default function DashboardPage() {
                     <p className="text-sm text-muted-foreground">No session data available</p>
                   ) : null}
                   {insights.table_utilization?.map((t) => (
-                    <div key={t.table_number} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
-                      <span className="font-medium">{t.table_number}</span>
+                    <div key={t.tableNumber} className="flex items-center justify-between text-sm border-b pb-2 last:border-0">
+                      <span className="font-medium">{t.tableNumber}</span>
                       <span>
                         {t.session_count} session{t.session_count !== 1 ? "s" : ""} · ₹{(t.total_revenue ?? 0).toFixed(2)}
                       </span>

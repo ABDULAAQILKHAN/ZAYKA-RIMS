@@ -1,125 +1,103 @@
 "use client"
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
-import { clearToken, setToken } from "@/store/auth-slice"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createClient } from "@zayka/auth/client"
+import type { User } from "@supabase/supabase-js"
 import { useAppDispatch } from "@/store/hooks"
+import { setToken, clearToken } from "@/store/auth-slice"
 
-type SessionUser = {
+interface UserProfile {
   id: string
   email: string
+  role?: string
 }
 
-type SessionRole = "admin" | "manager" | null
-
-type SessionShape = {
-  access_token: string
-  user: SessionUser
-  role: Exclude<SessionRole, null>
-}
-
-interface AuthContextValue {
-  user: SessionUser | null
-  role: SessionRole
-  session: SessionShape | null
+interface AuthContextType {
+  user: User | null
+  profile: UserProfile | null
   isLoading: boolean
-  error: string | null
+  error: any
   signOut: () => Promise<void>
   refreshAuth: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined)
-
-function readSessionFromStorage(): SessionShape | null {
-  if (typeof window === "undefined") {
-    return null
-  }
-
-  const token = localStorage.getItem("access_token")
-  const userRaw = localStorage.getItem("rims_user")
-  const roleRaw = localStorage.getItem("rims_role")
-
-  if (!token || !userRaw || !roleRaw) {
-    return null
-  }
-
-  try {
-    const user = JSON.parse(userRaw) as SessionUser
-    if (!user?.id || !user?.email) {
-      return null
-    }
-
-    if (roleRaw !== "admin" && roleRaw !== "manager") {
-      return null
-    }
-
-    return {
-      access_token: token,
-      user,
-      role: roleRaw,
-    }
-  } catch {
-    return null
-  }
-}
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const dispatch = useAppDispatch()
-  const [user, setUser] = useState<SessionUser | null>(null)
-  const [role, setRole] = useState<SessionRole>(null)
-  const [session, setSession] = useState<SessionShape | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<any>(null)
+  const supabase = createClient()
+  const dispatch = useAppDispatch()
+
+  const fetchProfile = (currentUser: User): UserProfile => {
+    return {
+      id: currentUser.id,
+      email: currentUser.email!,
+      role: currentUser.user_metadata?.role || 'staff',
+    }
+  }
 
   const refreshAuth = async () => {
-    const stored = readSessionFromStorage()
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) throw error
 
-    if (!stored) {
-      setUser(null)
-      setRole(null)
-      setSession(null)
-      setError(null)
-      dispatch(clearToken())
+      if (session?.user) {
+        setUser(session.user)
+        setProfile(fetchProfile(session.user))
+        dispatch(setToken(session.access_token))
+      } else {
+        setUser(null)
+        setProfile(null)
+        dispatch(clearToken())
+      }
+    } catch (err) {
+      setError(err)
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    setUser(stored.user)
-    setRole(stored.role)
-    setSession(stored)
-    setError(null)
-    dispatch(setToken(stored.access_token))
-    setIsLoading(false)
   }
 
   const signOut = async () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("rims_user")
-      localStorage.removeItem("rims_role")
-    }
-
+    await supabase.auth.signOut()
     setUser(null)
-    setRole(null)
-    setSession(null)
-    setError(null)
+    setProfile(null)
     dispatch(clearToken())
   }
 
   useEffect(() => {
     refreshAuth()
-  }, [])
 
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      role,
-      session,
-      isLoading,
-      error,
-      signOut,
-      refreshAuth,
-    }),
-    [error, isLoading, role, session, user],
-  )
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setUser(session.user)
+          setProfile(fetchProfile(session.user))
+          dispatch(setToken(session.access_token))
+        } else {
+          setUser(null)
+          setProfile(null)
+          dispatch(clearToken())
+        }
+        setIsLoading(false)
+      }
+    )
+
+    return () => {
+      subscription.unsubscribe()
+    }
+  }, [supabase, dispatch])
+
+  const value = {
+    user,
+    profile,
+    isLoading,
+    error,
+    signOut,
+    refreshAuth,
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -160,7 +160,7 @@ function OrdersTable({ orders, handleStatusChange }: { orders: Order[], handleSt
                                 </TableCell>
                                 <TableCell>
                                     <div className="flex flex-col gap-1">
-                                        {order.items.map((item, i) => (
+                                        {(order.items || []).map((item, i) => (
                                             <span key={i} className="text-sm">
                                                 {item.quantity}x {item.name}
                                             </span>
