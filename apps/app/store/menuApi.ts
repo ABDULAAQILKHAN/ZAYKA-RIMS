@@ -36,11 +36,11 @@ export interface MenuCategory {
   updatedAt: string
 }
 
-interface CreateMenuItemInput extends Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'> { }
-interface UpdateMenuItemInput extends Partial<Omit<MenuItem, 'id'>> { id: string }
+export interface CreateMenuItemInput extends Omit<MenuItem, 'id' | 'createdAt' | 'updatedAt'> { }
+export interface UpdateMenuItemInput extends Partial<Omit<MenuItem, 'id'>> { id: string }
 
-interface CreateMenuCategoryInput extends Omit<MenuCategory, 'id' | 'createdAt' | 'updatedAt'> { }
-interface UpdateMenuCategoryInput extends Partial<Omit<MenuCategory, 'id'>> { id: string }
+export interface CreateMenuCategoryInput extends Omit<MenuCategory, 'id' | 'createdAt' | 'updatedAt'> { }
+export interface UpdateMenuCategoryInput extends Partial<Omit<MenuCategory, 'id'>> { id: string }
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 

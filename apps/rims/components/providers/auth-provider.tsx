@@ -1,24 +1,26 @@
 "use client"
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react"
-import type { Session, User } from "@supabase/supabase-js"
-import { createClient } from "@/services/supabase"
-import { getRoleFromUserMetadata } from "@/lib/auth"
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react"
 import { clearToken, setToken } from "@/store/auth-slice"
 import { useAppDispatch } from "@/store/hooks"
-import type { RimsRole } from "@/types"
+
+type SessionUser = {
+  id: string
+  email: string
+}
+
+type SessionRole = "admin" | "manager" | null
+
+type SessionShape = {
+  access_token: string
+  user: SessionUser
+  role: Exclude<SessionRole, null>
+}
 
 interface AuthContextValue {
-  user: User | null
-  role: RimsRole | null
-  session: Session | null
+  user: SessionUser | null
+  role: SessionRole
+  session: SessionShape | null
   isLoading: boolean
   error: string | null
   signOut: () => Promise<void>
@@ -27,79 +29,74 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-async function resolveRole(user: User | null): Promise<RimsRole | null> {
-  if (!user) {
+function readSessionFromStorage(): SessionShape | null {
+  if (typeof window === "undefined") {
     return null
   }
 
-  const metadataRole = getRoleFromUserMetadata(user)
-  if (metadataRole) {
-    return metadataRole as RimsRole
+  const token = localStorage.getItem("access_token")
+  const userRaw = localStorage.getItem("rims_user")
+  const roleRaw = localStorage.getItem("rims_role")
+
+  if (!token || !userRaw || !roleRaw) {
+    return null
   }
 
-  const supabase = createClient()
-  const byUserId = await supabase
-    .from("users")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle()
+  try {
+    const user = JSON.parse(userRaw) as SessionUser
+    if (!user?.id || !user?.email) {
+      return null
+    }
 
-  if (byUserId.data?.role) {
-    return byUserId.data.role as RimsRole
+    if (roleRaw !== "admin" && roleRaw !== "manager") {
+      return null
+    }
+
+    return {
+      access_token: token,
+      user,
+      role: roleRaw,
+    }
+  } catch {
+    return null
   }
-
-  const byId = await supabase.from("users").select("role").eq("id", user.id).maybeSingle()
-  if (byId.data?.role) {
-    return byId.data.role as RimsRole
-  }
-
-  return null
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const dispatch = useAppDispatch()
-  const [user, setUser] = useState<User | null>(null)
-  const [role, setRole] = useState<RimsRole | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
+  const [user, setUser] = useState<SessionUser | null>(null)
+  const [role, setRole] = useState<SessionRole>(null)
+  const [session, setSession] = useState<SessionShape | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const refreshAuth = async () => {
-    const supabase = createClient()
+    const stored = readSessionFromStorage()
 
-    try {
-      const { data, error: sessionError } = await supabase.auth.getSession()
-      if (sessionError) {
-        throw sessionError
-      }
-
-      setSession(data.session ?? null)
-      setUser(data.session?.user ?? null)
-
-      if (data.session?.access_token) {
-        dispatch(setToken(data.session.access_token))
-      } else {
-        dispatch(clearToken())
-      }
-
-      const resolvedRole = await resolveRole(data.session?.user ?? null)
-      setRole(resolvedRole)
-      setError(null)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to initialize auth"
-      setError(message)
-      setSession(null)
+    if (!stored) {
       setUser(null)
       setRole(null)
+      setSession(null)
+      setError(null)
       dispatch(clearToken())
-    } finally {
       setIsLoading(false)
+      return
     }
+
+    setUser(stored.user)
+    setRole(stored.role)
+    setSession(stored)
+    setError(null)
+    dispatch(setToken(stored.access_token))
+    setIsLoading(false)
   }
 
   const signOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("rims_user")
+      localStorage.removeItem("rims_role")
+    }
+
     setUser(null)
     setRole(null)
     setSession(null)
@@ -108,30 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const supabase = createClient()
     refreshAuth()
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      setSession(nextSession)
-      setUser(nextSession?.user ?? null)
-
-      if (nextSession?.access_token) {
-        dispatch(setToken(nextSession.access_token))
-      } else {
-        dispatch(clearToken())
-      }
-
-      const resolvedRole = await resolveRole(nextSession?.user ?? null)
-      setRole(resolvedRole)
-      setIsLoading(false)
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [dispatch])
+  }, [])
 
   const value = useMemo<AuthContextValue>(
     () => ({

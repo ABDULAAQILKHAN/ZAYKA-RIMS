@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit"
 
-interface AuthState {
+export interface AuthState {
   token: string | null
 }
 
@@ -21,8 +21,10 @@ const authSlice = createSlice({
 
       if (action.payload) {
         localStorage.setItem("access_token", action.payload)
+        document.cookie = `rims_token=${action.payload}; path=/; max-age=604800; samesite=lax`
       } else {
         localStorage.removeItem("access_token")
+        document.cookie = "rims_token=; path=/; max-age=0; samesite=lax"
       }
     },
     clearToken: (state) => {
@@ -33,6 +35,7 @@ const authSlice = createSlice({
       }
 
       localStorage.removeItem("access_token")
+      document.cookie = "rims_token=; path=/; max-age=0; samesite=lax"
     },
     loadToken: (state) => {
       if (typeof window === "undefined") {
@@ -41,6 +44,9 @@ const authSlice = createSlice({
 
       const token = localStorage.getItem("access_token")
       state.token = token
+      if (token) {
+        document.cookie = `rims_token=${token}; path=/; max-age=604800; samesite=lax`
+      }
     },
   },
 })

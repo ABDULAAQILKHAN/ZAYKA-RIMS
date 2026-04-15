@@ -5,22 +5,20 @@ import { usePathname, useRouter } from "next/navigation"
 import { Button, cn } from "@zayka/ui"
 import {
   LayoutDashboard,
-  Package,
-  UtensilsCrossed,
   ShoppingCart,
+  ShoppingBag,
+  History,
   Receipt,
-  BarChart3,
   LogOut,
 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Inventory", href: "/inventory", icon: Package },
-  { label: "Menu Management", href: "/menu", icon: UtensilsCrossed },
   { label: "Orders", href: "/orders", icon: ShoppingCart },
+  { label: "Takeaway", href: "/takeaway", icon: ShoppingBag },
+  { label: "History", href: "/history", icon: History },
   { label: "Billing / Invoices", href: "/billing", icon: Receipt },
-  { label: "Reports", href: "/reports", icon: BarChart3 },
 ]
 
 export function Sidebar() {

@@ -1,9 +1,12 @@
 "use client"
 
+import { useState } from "react"
 import {
+  Badge,
   Button,
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
   Table,
@@ -13,100 +16,284 @@ import {
   TableHeader,
   TableRow,
 } from "@zayka/ui"
-import { useCreateInvoiceMutation, useGetInvoicesQuery, useGetOrdersQuery } from "@/store/api"
+import {
+  useCloseTableSessionMutation,
+  useGetTableSessionsQuery,
+  type InvoiceRecord,
+  type TableSession,
+  type OrderRecord,
+} from "@/store/api"
 
 export default function BillingPage() {
-  const { data: orders } = useGetOrdersQuery()
-  const { data: invoices, isLoading } = useGetInvoicesQuery()
-  const [createInvoice, { isLoading: generating }] = useCreateInvoiceMutation()
+  const { data: sessions = [], isLoading: sessionsLoading } = useGetTableSessionsQuery()
+  const [closeSession, { isLoading: closingSession }] = useCloseTableSessionMutation()
 
-  const uninvoicedDeliveredOrders = (orders ?? []).filter(
-    (order) =>
-      order.status === "delivered" &&
-      !(invoices ?? []).some((invoice) => invoice.order_id === order.id),
-  )
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
+  const [generatedInvoice, setGeneratedInvoice] = useState<InvoiceRecord | null>(null)
+
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId) as
+    | (TableSession & { orders: OrderRecord[] })
+    | undefined
+
+  const onSelectSession = (sessionId: string) => {
+    setSelectedSessionId(sessionId)
+    setGeneratedInvoice(null)
+  }
+
+  const onCloseAndBill = async () => {
+    if (!selectedSessionId) return
+
+    try {
+      const invoice = await closeSession({ session_id: selectedSessionId }).unwrap()
+      setGeneratedInvoice(invoice)
+    } catch {
+      // Error handled by RTK Query
+    }
+  }
+
+  // Compute aggregated items from all orders for preview
+  const aggregatedItems = selectedSession
+    ? (() => {
+        const itemMap = new Map<
+          string,
+          {
+            id: string
+            menu_item_id: string
+            menu_item_name: string
+            quantity: number
+            unit_price: number
+            line_total: number
+          }
+        >()
+
+        selectedSession.orders.forEach((order) => {
+          order.items.forEach((item) => {
+            const existing = itemMap.get(item.menu_item_id)
+            if (existing) {
+              existing.quantity += item.quantity
+              existing.line_total += item.line_total
+            } else {
+              itemMap.set(item.menu_item_id, { ...item })
+            }
+          })
+        })
+
+        return Array.from(itemMap.values())
+      })()
+    : []
 
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Billing & Invoices</h1>
         <p className="mt-1 text-muted-foreground">
-          Generate invoices with subtotal, GST, and total.
+          Close table sessions and generate consolidated invoices. For takeaway billing, use the Takeaway page.
         </p>
       </div>
 
+      {/* Occupied Tables Grid */}
       <Card>
         <CardHeader>
-          <CardTitle>Generate Invoice</CardTitle>
+          <CardTitle>Occupied Tables</CardTitle>
+          <CardDescription>
+            Select a table to view its session details and generate the bill.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {uninvoicedDeliveredOrders.length === 0 ? (
+        <CardContent>
+          {sessionsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading sessions...</p>
+          ) : sessions.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No delivered orders pending invoice generation.
+              No occupied tables at the moment. All tables are available.
             </p>
           ) : (
-            uninvoicedDeliveredOrders.map((order) => (
-              <div
-                key={order.id}
-                className="flex items-center justify-between rounded-md border p-3"
-              >
-                <div>
-                  <p className="font-medium">Order #{order.id.slice(0, 8)}</p>
-                  <p className="text-sm text-muted-foreground">
-                    Subtotal INR {order.subtotal} | GST INR {order.gst} | Total INR {order.total}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  disabled={generating}
-                  onClick={() => createInvoice({ order_id: order.id })}
-                >
-                  Generate Invoice
-                </Button>
-              </div>
-            ))
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {sessions.map((session) => {
+                const isSelected = selectedSessionId === session.id
+                const duration = Math.round(
+                  (Date.now() - new Date(session.created_at).getTime()) / 60000,
+                )
+
+                return (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => onSelectSession(session.id)}
+                    className={`cursor-pointer rounded-lg border p-4 text-left transition-colors ${
+                      isSelected
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-primary/40 hover:bg-muted/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-lg font-semibold">{session.table_number}</p>
+                      <Badge variant="default">Occupied</Badge>
+                    </div>
+                    <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      <p>
+                        {session.orders.length} order{session.orders.length !== 1 ? "s" : ""} · {duration} min
+                      </p>
+                      <p className="font-semibold text-foreground">₹{session.total.toFixed(2)}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Invoices</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Invoice ID</TableHead>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Subtotal</TableHead>
-                <TableHead>GST</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(invoices ?? []).map((invoice) => (
-                <TableRow key={invoice.id}>
-                  <TableCell className="font-medium">{invoice.id.slice(0, 8)}</TableCell>
-                  <TableCell>{invoice.order_id.slice(0, 8)}</TableCell>
-                  <TableCell>INR {invoice.subtotal}</TableCell>
-                  <TableCell>INR {invoice.gst}</TableCell>
-                  <TableCell>INR {invoice.total}</TableCell>
-                  <TableCell>{invoice.status}</TableCell>
-                </TableRow>
+      {/* Session Detail Panel */}
+      {selectedSession && !generatedInvoice ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>{selectedSession.table_number} — Session Details</CardTitle>
+                <CardDescription>
+                  Session {selectedSession.id} · Started{" "}
+                  {new Date(selectedSession.created_at).toLocaleTimeString()}
+                </CardDescription>
+              </div>
+              <Button onClick={onCloseAndBill} disabled={closingSession}>
+                {closingSession ? "Generating..." : "Generate Invoice & Close Table"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Individual Orders */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Orders in this session
+              </h3>
+              {selectedSession.orders.map((order, idx) => (
+                <div key={order.id} className="rounded-md border p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">
+                      Order {idx + 1} — #{order.id}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        {order.status}
+                      </Badge>
+                      <span className="text-sm font-medium">₹{order.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    {order.items.map((i) => `${i.menu_item_name} x${i.quantity}`).join(" · ")}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Placed at {new Date(order.created_at).toLocaleTimeString()}
+                  </p>
+                </div>
               ))}
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground">
-                    Loading invoices...
-                  </TableCell>
-                </TableRow>
+            </div>
+
+            {/* Consolidated Bill Preview */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Consolidated Bill Preview
+              </h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead>Qty</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Line Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {aggregatedItems.map((item) => (
+                    <TableRow key={item.menu_item_id}>
+                      <TableCell>{item.menu_item_name}</TableCell>
+                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>₹{item.unit_price}</TableCell>
+                      <TableCell>₹{item.line_total}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+
+              <div className="ml-auto max-w-xs space-y-1 rounded-md border p-3 text-sm">
+                <p>Subtotal: ₹{selectedSession.subtotal.toFixed(2)}</p>
+                <p>GST (5%): ₹{selectedSession.gst.toFixed(2)}</p>
+                <p className="text-base font-bold">Grand Total: ₹{selectedSession.total.toFixed(2)}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {/* Generated Invoice */}
+      {generatedInvoice ? (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Invoice Generated ✓</CardTitle>
+              <CardDescription>
+                Table has been closed. Invoice is ready to print.
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => window.print()}>
+                Print Invoice
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedSessionId(null)
+                  setGeneratedInvoice(null)
+                }}
+              >
+                Done
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border p-4 text-sm space-y-1">
+              <p className="text-lg font-bold">Zayka Darbar</p>
+              <hr className="my-2" />
+              <p>Invoice ID: {generatedInvoice.id}</p>
+              {generatedInvoice.session_id ? (
+                <p>Session ID: {generatedInvoice.session_id}</p>
               ) : null}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              {generatedInvoice.table_number ? (
+                <p>Table: {generatedInvoice.table_number}</p>
+              ) : null}
+              <p>Type: {generatedInvoice.order_type}</p>
+              <p>Date: {new Date(generatedInvoice.created_at).toLocaleString()}</p>
+            </div>
+
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Line Total</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {generatedInvoice.items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.menu_item_name}</TableCell>
+                    <TableCell>{item.quantity}</TableCell>
+                    <TableCell>₹{item.unit_price}</TableCell>
+                    <TableCell>₹{item.line_total}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            <div className="ml-auto max-w-xs space-y-1 rounded-md border p-3 text-sm">
+              <p>Subtotal: ₹{generatedInvoice.subtotal}</p>
+              <p>GST (5%): ₹{generatedInvoice.gst}</p>
+              <p className="text-base font-bold">Grand Total: ₹{generatedInvoice.total}</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   )
 }

@@ -38,7 +38,9 @@ export default function LoginPage() {
 
     try {
       const result = await login({ email, password }).unwrap()
-      dispatch(setToken(result.access_token))
+      dispatch(setToken(result.token))
+      localStorage.setItem("rims_user", JSON.stringify(result.user))
+      localStorage.setItem("rims_role", result.role)
       router.push("/dashboard")
     } catch (err) {
       const message =

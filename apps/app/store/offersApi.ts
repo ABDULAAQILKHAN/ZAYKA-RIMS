@@ -24,11 +24,11 @@ export interface TodaysSpecialItem {
   updatedAt: string
 }
 
-interface CreateSpecialOfferInput extends Omit<SpecialOffer, 'id' | 'createdAt' | 'updatedAt'> {}
-interface UpdateSpecialOfferInput extends Partial<Omit<SpecialOffer, 'id'>> { id: string }
+export interface CreateSpecialOfferInput extends Omit<SpecialOffer, 'id' | 'createdAt' | 'updatedAt'> {}
+export interface UpdateSpecialOfferInput extends Partial<Omit<SpecialOffer, 'id'>> { id: string }
 
-interface CreateTodaysSpecialInput extends Omit<TodaysSpecialItem, 'id' | 'createdAt' | 'updatedAt'> {}
-interface UpdateTodaysSpecialInput extends Partial<Omit<TodaysSpecialItem, 'id'>> { id: string }
+export interface CreateTodaysSpecialInput extends Omit<TodaysSpecialItem, 'id' | 'createdAt' | 'updatedAt'> {}
+export interface UpdateTodaysSpecialInput extends Partial<Omit<TodaysSpecialItem, 'id'>> { id: string }
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 

@@ -9,6 +9,7 @@ import { ChefHat, ShoppingBag, Clock, DollarSign, Plus } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@zayka/ui"
 import StaffManagement from "./staff-management"
 import OrderManagement from "./order-management"
+import RimsManagement from "./rims-management"
 import { useGetDashboardStatsQuery, useGetRecentOrdersQuery } from "@/store/dashboardApi"
 import { formatCurrency, formatOrderDate } from "@zayka/utils"
 import { useAppSelector } from "@/store/hooks"
@@ -146,6 +147,7 @@ export default function AdminDashboard() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="orders">Orders</TabsTrigger>
           <TabsTrigger value="staff">Staff Management</TabsTrigger>
+          <TabsTrigger value="rims">RIMS Management</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -254,6 +256,9 @@ export default function AdminDashboard() {
         </TabsContent>
         <TabsContent value="staff">
           <StaffManagement />
+        </TabsContent>
+        <TabsContent value="rims">
+          <RimsManagement />
         </TabsContent>
       </Tabs>
     </div>

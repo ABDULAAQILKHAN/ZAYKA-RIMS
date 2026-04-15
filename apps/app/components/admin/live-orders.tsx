@@ -132,7 +132,7 @@ export default function LiveOrders() {
                     </div>
                     <div className="text-right">
                       <p className="font-semibold">{formatCurrency(order.total)}</p>
-                      <p className="text-xs text-muted-foreground">{order.paymentMethod || 'N/A'}</p>
+                      <p className="text-xs text-muted-foreground">Payment at counter</p>
                     </div>
                   </div>
                 </CardHeader>
@@ -141,7 +141,7 @@ export default function LiveOrders() {
                     <div>
                       <h4 className="font-medium mb-2">Customer Details</h4>
                       <p className="text-sm">{order.customerName || 'N/A'}</p>
-                      <p className="text-sm text-muted-foreground">{order.address || 'No address'}</p>
+                      <p className="text-sm text-muted-foreground">{order.deliveryAddress || 'No address'}</p>
                     </div>
                     <div>
                       <h4 className="font-medium mb-2">Order Items</h4>

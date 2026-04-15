@@ -1,771 +1,1134 @@
 import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react"
-import type { User } from "@supabase/supabase-js"
-import { createClient } from "@/services/supabase"
-import { getRoleFromUserMetadata, isAllowedRimsRole } from "@/lib/auth"
-import type {
-  Ingredient,
-  IngredientInput,
-  Invoice,
-  MenuItemRecord,
-  MenuItemWithRecipe,
-  OrderItemInput,
-  OrderRecord,
-  RecipeIngredient,
-  RimsRole,
-} from "@/types"
 
-interface ApiError {
+export type ApiError = {
   status: number | string
   data: { message: string }
 }
 
-interface LoginPayload {
+export type AuthRole = "admin" | "manager"
+
+export type AuthUser = {
+  id: string
+  email: string
+}
+
+export type LoginRequest = {
   email: string
   password: string
 }
 
-interface AuthResult {
-  user: User
-  role: RimsRole
-  access_token: string
+export type LoginResponse = {
+  user: AuthUser
+  role: AuthRole
+  token: string
 }
 
-interface MapRecipePayload {
+export type TableRecord = {
+  id: string
+  table_number: string
+  capacity?: number
+  status: "available" | "occupied"
+  active_order_count: number
+}
+
+export type MenuRecord = {
+  id: string
+  name: string
+  price: number
+  is_available: boolean
+}
+
+export type OrderType = "table" | "delivery" | "takeaway"
+
+export type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "served"
+  | "out_for_delivery"
+  | "delivered"
+  | "cancelled"
+
+export type CreateOrderItemInput = {
   menu_item_id: string
-  ingredients: RecipeIngredient[]
+  quantity: number
 }
 
-interface CreateOrderPayload {
-  items: OrderItemInput[]
-  status?: OrderRecord["status"]
+export type OrderRecord = {
+  id: string
+  order_type: OrderType
+  table_id?: string
+  table_number?: string
+  session_id?: string
+  status: OrderStatus
+  items: Array<{
+    id: string
+    menu_item_id: string
+    menu_item_name: string
+    quantity: number
+    unit_price: number
+    line_total: number
+  }>
+  subtotal: number
+  gst: number
+  total: number
+  created_at: string
 }
 
-interface CreateInvoicePayload {
-  order_id: string
+export type TableSession = {
+  id: string
+  table_id: string
+  table_number: string
+  status: "open" | "closed"
+  order_ids: string[]
+  subtotal: number
+  gst: number
+  total: number
+  created_at: string
+  closed_at?: string
 }
 
-interface DashboardStats {
-  total_ingredients: number
-  low_stock_count: number
-  total_orders: number
+export type InvoiceRecord = {
+  id: string
+  order_id?: string
+  session_id?: string
+  order_type: OrderType
+  table_number?: string
+  items: OrderRecord["items"]
+  subtotal: number
+  gst: number
+  total: number
+  created_at: string
+}
+
+export type InsightsPeriod = "week" | "month"
+
+export type InsightsRecord = {
+  period: InsightsPeriod
   total_revenue: number
+  total_orders: number
+  average_order_value: number
+  order_type_breakdown: {
+    table: number
+    takeaway: number
+    delivery: number
+  }
+  top_items: Array<{
+    name: string
+    quantity: number
+    revenue: number
+  }>
+  table_utilization: Array<{
+    table_number: string
+    session_count: number
+    total_revenue: number
+  }>
+  daily_revenue: Array<{
+    date: string
+    revenue: number
+    order_count: number
+  }>
 }
 
-function toApiError(error: unknown, fallbackMessage: string): ApiError {
-  if (error instanceof Error) {
-    return { status: "CUSTOM_ERROR", data: { message: error.message } }
-  }
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
 
-  if (typeof error === "object" && error !== null && "message" in error) {
+const delay = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const ACTIVE_STATUSES: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "ready",
+  "served",
+  "out_for_delivery",
+]
+
+const HISTORY_STATUSES: OrderStatus[] = ["delivered", "cancelled"]
+
+function uid(prefix: string) {
+  return `${prefix}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function daysAgo(days: number) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString()
+}
+
+function hoursAgo(hours: number) {
+  return new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
+}
+
+function minutesAgo(minutes: number) {
+  return new Date(Date.now() - minutes * 60 * 1000).toISOString()
+}
+
+// ──────────────────────────────────────────────
+// Mock Database
+// ──────────────────────────────────────────────
+
+const mockDb: {
+  tables: TableRecord[]
+  menu: MenuRecord[]
+  orders: OrderRecord[]
+  sessions: TableSession[]
+  invoices: InvoiceRecord[]
+} = {
+  tables: [
+    { id: "tbl-1", table_number: "T1", capacity: 4, status: "occupied", active_order_count: 2 },
+    { id: "tbl-2", table_number: "T2", capacity: 2, status: "available", active_order_count: 0 },
+    { id: "tbl-3", table_number: "T3", capacity: 6, status: "occupied", active_order_count: 1 },
+    { id: "tbl-4", table_number: "T4", capacity: 4, status: "available", active_order_count: 0 },
+    { id: "tbl-5", table_number: "T5", capacity: 8, status: "available", active_order_count: 0 },
+  ],
+  menu: [
+    { id: "m-1", name: "Paneer Lababdar", price: 280, is_available: true },
+    { id: "m-2", name: "Butter Naan", price: 55, is_available: true },
+    { id: "m-3", name: "Chicken Biryani", price: 340, is_available: true },
+    { id: "m-4", name: "Veg Hakka Noodles", price: 210, is_available: true },
+    { id: "m-5", name: "Gulab Jamun", price: 90, is_available: true },
+    { id: "m-6", name: "Dal Makhani", price: 240, is_available: true },
+    { id: "m-7", name: "Tandoori Roti", price: 35, is_available: true },
+    { id: "m-8", name: "Raita", price: 60, is_available: true },
+  ],
+  orders: [
+    // Active orders for T1 session
+    {
+      id: "ord-101",
+      order_type: "table",
+      table_id: "tbl-1",
+      table_number: "T1",
+      session_id: "ses-1",
+      status: "served",
+      items: [
+        { id: "oi-1", menu_item_id: "m-1", menu_item_name: "Paneer Lababdar", quantity: 1, unit_price: 280, line_total: 280 },
+        { id: "oi-2", menu_item_id: "m-2", menu_item_name: "Butter Naan", quantity: 2, unit_price: 55, line_total: 110 },
+      ],
+      subtotal: 390,
+      gst: 19.5,
+      total: 409.5,
+      created_at: minutesAgo(45),
+    },
+    {
+      id: "ord-102",
+      order_type: "table",
+      table_id: "tbl-1",
+      table_number: "T1",
+      session_id: "ses-1",
+      status: "preparing",
+      items: [
+        { id: "oi-3", menu_item_id: "m-5", menu_item_name: "Gulab Jamun", quantity: 2, unit_price: 90, line_total: 180 },
+        { id: "oi-4", menu_item_id: "m-8", menu_item_name: "Raita", quantity: 1, unit_price: 60, line_total: 60 },
+      ],
+      subtotal: 240,
+      gst: 12,
+      total: 252,
+      created_at: minutesAgo(10),
+    },
+    // Active order for T3 session
+    {
+      id: "ord-103",
+      order_type: "table",
+      table_id: "tbl-3",
+      table_number: "T3",
+      session_id: "ses-2",
+      status: "confirmed",
+      items: [
+        { id: "oi-5", menu_item_id: "m-4", menu_item_name: "Veg Hakka Noodles", quantity: 2, unit_price: 210, line_total: 420 },
+        { id: "oi-6", menu_item_id: "m-6", menu_item_name: "Dal Makhani", quantity: 1, unit_price: 240, line_total: 240 },
+      ],
+      subtotal: 660,
+      gst: 33,
+      total: 693,
+      created_at: minutesAgo(20),
+    },
+    // Historical - closed session from yesterday
+    {
+      id: "ord-090",
+      order_type: "table",
+      table_id: "tbl-5",
+      table_number: "T5",
+      session_id: "ses-closed-1",
+      status: "delivered",
+      items: [
+        { id: "oi-7", menu_item_id: "m-1", menu_item_name: "Paneer Lababdar", quantity: 1, unit_price: 280, line_total: 280 },
+        { id: "oi-8", menu_item_id: "m-7", menu_item_name: "Tandoori Roti", quantity: 4, unit_price: 35, line_total: 140 },
+      ],
+      subtotal: 420,
+      gst: 21,
+      total: 441,
+      created_at: daysAgo(1),
+    },
+    {
+      id: "ord-091",
+      order_type: "table",
+      table_id: "tbl-5",
+      table_number: "T5",
+      session_id: "ses-closed-1",
+      status: "delivered",
+      items: [
+        { id: "oi-9", menu_item_id: "m-5", menu_item_name: "Gulab Jamun", quantity: 3, unit_price: 90, line_total: 270 },
+      ],
+      subtotal: 270,
+      gst: 13.5,
+      total: 283.5,
+      created_at: daysAgo(1),
+    },
+    // Historical takeaway orders
+    {
+      id: "ord-080",
+      order_type: "takeaway",
+      status: "delivered",
+      items: [
+        { id: "oi-10", menu_item_id: "m-3", menu_item_name: "Chicken Biryani", quantity: 2, unit_price: 340, line_total: 680 },
+      ],
+      subtotal: 680,
+      gst: 34,
+      total: 714,
+      created_at: daysAgo(2),
+    },
+    {
+      id: "ord-081",
+      order_type: "takeaway",
+      status: "delivered",
+      items: [
+        { id: "oi-11", menu_item_id: "m-4", menu_item_name: "Veg Hakka Noodles", quantity: 1, unit_price: 210, line_total: 210 },
+        { id: "oi-12", menu_item_id: "m-2", menu_item_name: "Butter Naan", quantity: 3, unit_price: 55, line_total: 165 },
+      ],
+      subtotal: 375,
+      gst: 18.75,
+      total: 393.75,
+      created_at: daysAgo(3),
+    },
+    // More historical for insights
+    {
+      id: "ord-070",
+      order_type: "table",
+      table_id: "tbl-2",
+      table_number: "T2",
+      session_id: "ses-closed-2",
+      status: "delivered",
+      items: [
+        { id: "oi-13", menu_item_id: "m-6", menu_item_name: "Dal Makhani", quantity: 2, unit_price: 240, line_total: 480 },
+        { id: "oi-14", menu_item_id: "m-7", menu_item_name: "Tandoori Roti", quantity: 6, unit_price: 35, line_total: 210 },
+      ],
+      subtotal: 690,
+      gst: 34.5,
+      total: 724.5,
+      created_at: daysAgo(4),
+    },
+    {
+      id: "ord-060",
+      order_type: "takeaway",
+      status: "delivered",
+      items: [
+        { id: "oi-15", menu_item_id: "m-1", menu_item_name: "Paneer Lababdar", quantity: 1, unit_price: 280, line_total: 280 },
+        { id: "oi-16", menu_item_id: "m-2", menu_item_name: "Butter Naan", quantity: 2, unit_price: 55, line_total: 110 },
+      ],
+      subtotal: 390,
+      gst: 19.5,
+      total: 409.5,
+      created_at: daysAgo(5),
+    },
+    {
+      id: "ord-050",
+      order_type: "table",
+      table_id: "tbl-4",
+      table_number: "T4",
+      session_id: "ses-closed-3",
+      status: "delivered",
+      items: [
+        { id: "oi-17", menu_item_id: "m-3", menu_item_name: "Chicken Biryani", quantity: 3, unit_price: 340, line_total: 1020 },
+        { id: "oi-18", menu_item_id: "m-8", menu_item_name: "Raita", quantity: 3, unit_price: 60, line_total: 180 },
+      ],
+      subtotal: 1200,
+      gst: 60,
+      total: 1260,
+      created_at: daysAgo(6),
+    },
+    // Delivery order (from delivery app, shown in history)
+    {
+      id: "ord-040",
+      order_type: "delivery",
+      status: "delivered",
+      items: [
+        { id: "oi-19", menu_item_id: "m-3", menu_item_name: "Chicken Biryani", quantity: 1, unit_price: 340, line_total: 340 },
+      ],
+      subtotal: 340,
+      gst: 17,
+      total: 357,
+      created_at: daysAgo(2),
+    },
+  ],
+  sessions: [
+    // Active sessions
+    {
+      id: "ses-1",
+      table_id: "tbl-1",
+      table_number: "T1",
+      status: "open",
+      order_ids: ["ord-101", "ord-102"],
+      subtotal: 630,
+      gst: 31.5,
+      total: 661.5,
+      created_at: minutesAgo(45),
+    },
+    {
+      id: "ses-2",
+      table_id: "tbl-3",
+      table_number: "T3",
+      status: "open",
+      order_ids: ["ord-103"],
+      subtotal: 660,
+      gst: 33,
+      total: 693,
+      created_at: minutesAgo(20),
+    },
+    // Closed sessions
+    {
+      id: "ses-closed-1",
+      table_id: "tbl-5",
+      table_number: "T5",
+      status: "closed",
+      order_ids: ["ord-090", "ord-091"],
+      subtotal: 690,
+      gst: 34.5,
+      total: 724.5,
+      created_at: daysAgo(1),
+      closed_at: daysAgo(1),
+    },
+    {
+      id: "ses-closed-2",
+      table_id: "tbl-2",
+      table_number: "T2",
+      status: "closed",
+      order_ids: ["ord-070"],
+      subtotal: 690,
+      gst: 34.5,
+      total: 724.5,
+      created_at: daysAgo(4),
+      closed_at: daysAgo(4),
+    },
+    {
+      id: "ses-closed-3",
+      table_id: "tbl-4",
+      table_number: "T4",
+      status: "closed",
+      order_ids: ["ord-050"],
+      subtotal: 1200,
+      gst: 60,
+      total: 1260,
+      created_at: daysAgo(6),
+      closed_at: daysAgo(6),
+    },
+  ],
+  invoices: [
+    {
+      id: "inv-001",
+      session_id: "ses-closed-1",
+      order_type: "table",
+      table_number: "T5",
+      items: [
+        { id: "oi-7", menu_item_id: "m-1", menu_item_name: "Paneer Lababdar", quantity: 1, unit_price: 280, line_total: 280 },
+        { id: "oi-8", menu_item_id: "m-7", menu_item_name: "Tandoori Roti", quantity: 4, unit_price: 35, line_total: 140 },
+        { id: "oi-9", menu_item_id: "m-5", menu_item_name: "Gulab Jamun", quantity: 3, unit_price: 90, line_total: 270 },
+      ],
+      subtotal: 690,
+      gst: 34.5,
+      total: 724.5,
+      created_at: daysAgo(1),
+    },
+    {
+      id: "inv-002",
+      order_id: "ord-080",
+      order_type: "takeaway",
+      items: [
+        { id: "oi-10", menu_item_id: "m-3", menu_item_name: "Chicken Biryani", quantity: 2, unit_price: 340, line_total: 680 },
+      ],
+      subtotal: 680,
+      gst: 34,
+      total: 714,
+      created_at: daysAgo(2),
+    },
+  ],
+}
+
+function toError(message: string): ApiError {
+  return {
+    status: "CUSTOM_ERROR",
+    data: { message },
+  }
+}
+
+function toOrderItems(items: CreateOrderItemInput[]) {
+  const mapped = items.map((item) => {
+    const menu = mockDb.menu.find((entry) => entry.id === item.menu_item_id)
+
     return {
-      status: "CUSTOM_ERROR",
-      data: { message: String((error as { message: unknown }).message) },
+      id: uid("oi"),
+      menu_item_id: item.menu_item_id,
+      menu_item_name: menu?.name ?? "Unknown item",
+      quantity: item.quantity,
+      unit_price: menu?.price ?? 0,
+      line_total: (menu?.price ?? 0) * item.quantity,
     }
-  }
+  })
 
-  return { status: "CUSTOM_ERROR", data: { message: fallbackMessage } }
+  const subtotal = mapped.reduce((sum, item) => sum + item.line_total, 0)
+  const gst = Number((subtotal * 0.05).toFixed(2))
+  const total = Number((subtotal + gst).toFixed(2))
+
+  return { mapped, subtotal, gst, total }
 }
 
-async function resolveUserRole(user: User): Promise<RimsRole | null> {
-  const supabase = createClient()
-  const metadataRole = getRoleFromUserMetadata(user)
-  if (metadataRole) {
-    return metadataRole as RimsRole
+function syncTableOccupancy(tableId: string) {
+  const table = mockDb.tables.find((entry) => entry.id === tableId)
+  if (!table) return
+
+  const openSession = mockDb.sessions.find(
+    (s) => s.table_id === tableId && s.status === "open",
+  )
+
+  if (openSession) {
+    const activeOrderCount = mockDb.orders.filter(
+      (o) => openSession.order_ids.includes(o.id) && ACTIVE_STATUSES.includes(o.status),
+    ).length
+    table.active_order_count = activeOrderCount
+    table.status = "occupied"
+  } else {
+    table.active_order_count = 0
+    table.status = "available"
   }
-
-  const byUserId = await supabase
-    .from("users")
-    .select("role")
-    .eq("user_id", user.id)
-    .maybeSingle()
-
-  if (byUserId.data?.role) {
-    return byUserId.data.role as RimsRole
-  }
-
-  const byId = await supabase.from("users").select("role").eq("id", user.id).maybeSingle()
-
-  if (byId.data?.role) {
-    return byId.data.role as RimsRole
-  }
-
-  return null
 }
 
-async function recalculateMenuAvailability(): Promise<void> {
-  const supabase = createClient()
+function recalcSessionTotals(session: TableSession) {
+  const sessionOrders = mockDb.orders.filter((o) => session.order_ids.includes(o.id))
+  session.subtotal = sessionOrders.reduce((sum, o) => sum + o.subtotal, 0)
+  session.gst = Number((session.subtotal * 0.05).toFixed(2))
+  session.total = Number((session.subtotal + session.gst).toFixed(2))
+}
 
-  const { data: menuItems, error: menuItemsError } = await supabase
-    .from("menu_items")
-    .select("id")
+function computeInsights(period: InsightsPeriod): InsightsRecord {
+  const now = Date.now()
+  const cutoff = period === "week" ? 7 : 30
+  const cutoffDate = new Date(now - cutoff * 24 * 60 * 60 * 1000)
 
-  if (menuItemsError) {
-    throw menuItemsError
-  }
+  const periodOrders = mockDb.orders.filter(
+    (o) => new Date(o.created_at) >= cutoffDate,
+  )
 
-  for (const menuItem of menuItems ?? []) {
-    const { data: recipeRows, error: recipeError } = await supabase
-      .from("menu_recipes")
-      .select("ingredient_id, quantity_required")
-      .eq("menu_item_id", menuItem.id)
+  const completedOrders = periodOrders.filter((o) =>
+    ["delivered", "served"].includes(o.status) || ACTIVE_STATUSES.includes(o.status),
+  )
 
-    if (recipeError) {
-      throw recipeError
-    }
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + o.total, 0)
+  const totalOrders = completedOrders.length
+  const averageOrderValue = totalOrders > 0 ? Number((totalRevenue / totalOrders).toFixed(2)) : 0
 
-    const recipe = recipeRows ?? []
-    if (recipe.length === 0) {
-      await supabase
-        .from("menu_items")
-        .update({ is_available: true })
-        .eq("id", menuItem.id)
-      continue
-    }
+  // Order type breakdown
+  const orderTypeBreakdown = { table: 0, takeaway: 0, delivery: 0 }
+  completedOrders.forEach((o) => {
+    orderTypeBreakdown[o.order_type] = (orderTypeBreakdown[o.order_type] || 0) + 1
+  })
 
-    const ingredientIds = recipe.map((row) => row.ingredient_id)
-    const { data: ingredientRows, error: ingredientError } = await supabase
-      .from("ingredients")
-      .select("id, current_stock")
-      .in("id", ingredientIds)
-
-    if (ingredientError) {
-      throw ingredientError
-    }
-
-    const stockMap = new Map<string, number>(
-      (ingredientRows ?? []).map((row) => [row.id as string, Number(row.current_stock)]),
-    )
-
-    const isAvailable = recipe.every((row) => {
-      const stock = stockMap.get(row.ingredient_id as string) ?? 0
-      return stock >= Number(row.quantity_required)
+  // Top items
+  const itemMap = new Map<string, { name: string; quantity: number; revenue: number }>()
+  completedOrders.forEach((o) => {
+    o.items.forEach((item) => {
+      const existing = itemMap.get(item.menu_item_name)
+      if (existing) {
+        existing.quantity += item.quantity
+        existing.revenue += item.line_total
+      } else {
+        itemMap.set(item.menu_item_name, {
+          name: item.menu_item_name,
+          quantity: item.quantity,
+          revenue: item.line_total,
+        })
+      }
     })
+  })
+  const topItems = Array.from(itemMap.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5)
 
-    await supabase
-      .from("menu_items")
-      .update({ is_available: isAvailable })
-      .eq("id", menuItem.id)
+  // Table utilization
+  const tableSessionMap = new Map<string, { table_number: string; session_count: number; total_revenue: number }>()
+  mockDb.sessions
+    .filter((s) => new Date(s.created_at) >= cutoffDate)
+    .forEach((s) => {
+      const existing = tableSessionMap.get(s.table_number)
+      if (existing) {
+        existing.session_count += 1
+        existing.total_revenue += s.total
+      } else {
+        tableSessionMap.set(s.table_number, {
+          table_number: s.table_number,
+          session_count: 1,
+          total_revenue: s.total,
+        })
+      }
+    })
+  const tableUtilization = Array.from(tableSessionMap.values())
+    .sort((a, b) => b.session_count - a.session_count)
+
+  // Daily revenue
+  const dailyMap = new Map<string, { date: string; revenue: number; order_count: number }>()
+  for (let i = 0; i < cutoff; i++) {
+    const d = new Date(now - i * 24 * 60 * 60 * 1000)
+    const dateStr = d.toISOString().slice(0, 10)
+    dailyMap.set(dateStr, { date: dateStr, revenue: 0, order_count: 0 })
+  }
+  completedOrders.forEach((o) => {
+    const dateStr = o.created_at.slice(0, 10)
+    const entry = dailyMap.get(dateStr)
+    if (entry) {
+      entry.revenue += o.total
+      entry.order_count += 1
+    }
+  })
+  const dailyRevenue = Array.from(dailyMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+
+  return {
+    period,
+    total_revenue: Number(totalRevenue.toFixed(2)),
+    total_orders: totalOrders,
+    average_order_value: averageOrderValue,
+    order_type_breakdown: orderTypeBreakdown,
+    top_items: topItems,
+    table_utilization: tableUtilization,
+    daily_revenue: dailyRevenue,
   }
 }
 
-async function deductIngredientsForOrder(items: OrderItemInput[]): Promise<void> {
-  const supabase = createClient()
-  const menuItemIds = items.map((item) => item.menu_item_id)
-
-  const { data: recipeRows, error: recipeError } = await supabase
-    .from("menu_recipes")
-    .select("menu_item_id, ingredient_id, quantity_required")
-    .in("menu_item_id", menuItemIds)
-
-  if (recipeError) {
-    throw recipeError
-  }
-
-  const deductionByIngredient = new Map<string, number>()
-
-  for (const item of items) {
-    const recipeForItem = (recipeRows ?? []).filter(
-      (row) => row.menu_item_id === item.menu_item_id,
-    )
-
-    for (const row of recipeForItem) {
-      const previous = deductionByIngredient.get(row.ingredient_id as string) ?? 0
-      const toDeduct = Number(row.quantity_required) * item.quantity
-      deductionByIngredient.set(row.ingredient_id as string, previous + toDeduct)
-    }
-  }
-
-  const ingredientIds = Array.from(deductionByIngredient.keys())
-  if (ingredientIds.length === 0) {
-    return
-  }
-
-  const { data: ingredientRows, error: ingredientError } = await supabase
-    .from("ingredients")
-    .select("id, current_stock")
-    .in("id", ingredientIds)
-
-  if (ingredientError) {
-    throw ingredientError
-  }
-
-  for (const ingredient of ingredientRows ?? []) {
-    const currentStock = Number(ingredient.current_stock)
-    const deduction = deductionByIngredient.get(ingredient.id as string) ?? 0
-    const nextStock = Math.max(0, currentStock - deduction)
-
-    const { error: updateError } = await supabase
-      .from("ingredients")
-      .update({ current_stock: nextStock })
-      .eq("id", ingredient.id)
-
-    if (updateError) {
-      throw updateError
-    }
-  }
-
-  await recalculateMenuAvailability()
-}
+// ──────────────────────────────────────────────
+// API Definition
+// ──────────────────────────────────────────────
 
 export const rimsApi = createApi({
   reducerPath: "rimsApi",
   baseQuery: fakeBaseQuery<ApiError>(),
-  tagTypes: ["Auth", "Ingredient", "Menu", "Recipe", "Order", "Invoice", "Dashboard"],
+  tagTypes: ["Auth", "Table", "Menu", "Order", "History", "Invoice", "Session", "Insights"],
   endpoints: (builder) => ({
-    getDashboardStats: builder.query<DashboardStats, void>({
-      async queryFn() {
-        try {
-          const supabase = createClient()
+    // ── Auth ──────────────────────────────────
 
-          const [ingredientsRes, ordersRes] = await Promise.all([
-            supabase.from("ingredients").select("id, current_stock, min_stock"),
-            supabase.from("orders").select("id, total"),
-          ])
-
-          if (ingredientsRes.error) {
-            throw ingredientsRes.error
-          }
-          if (ordersRes.error) {
-            throw ordersRes.error
-          }
-
-          const ingredients = ingredientsRes.data ?? []
-          const orders = ordersRes.data ?? []
-
-          const totalRevenue = orders.reduce(
-            (sum, order) => sum + Number(order.total ?? 0),
-            0,
-          )
-
-          return {
-            data: {
-              total_ingredients: ingredients.length,
-              low_stock_count: ingredients.filter(
-                (ingredient) =>
-                  Number(ingredient.current_stock) <= Number(ingredient.min_stock),
-              ).length,
-              total_orders: orders.length,
-              total_revenue: Number(totalRevenue.toFixed(2)),
-            },
-          }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to load dashboard stats") }
-        }
-      },
-      providesTags: ["Dashboard"],
-    }),
-
-    login: builder.mutation<AuthResult, LoginPayload>({
+    login: builder.mutation<LoginResponse, LoginRequest>({
       async queryFn(payload) {
-        try {
-          const supabase = createClient()
-          const { data, error } = await supabase.auth.signInWithPassword(payload)
+        await delay()
 
-          if (error) {
-            throw error
-          }
+        if (!payload.email || !payload.password) {
+          return { error: toError("Email and password are required") }
+        }
 
-          if (!data.user || !data.session) {
-            throw new Error("No active session returned from login")
-          }
+        if (payload.password.length < 4) {
+          return { error: toError("Invalid credentials") }
+        }
 
-          const role = await resolveUserRole(data.user)
-          if (!isAllowedRimsRole(role)) {
-            await supabase.auth.signOut()
-            throw new Error("Unauthorized access")
-          }
-
-          return {
-            data: {
-              user: data.user,
-              role,
-              access_token: data.session.access_token,
+        return {
+          data: {
+            user: {
+              id: "rims-user-1",
+              email: payload.email.toLowerCase(),
             },
-          }
-        } catch (error) {
-          return { error: toApiError(error, "Login failed") }
+            role: payload.email.includes("manager") ? "manager" : "admin",
+            token: `mock-rims-token-${Date.now()}`,
+          },
         }
       },
       invalidatesTags: ["Auth"],
     }),
 
-    getIngredients: builder.query<Ingredient[], void>({
+    // ── Tables ────────────────────────────────
+
+    getTables: builder.query<TableRecord[], void>({
       async queryFn() {
-        try {
-          const supabase = createClient()
-          const { data, error } = await supabase
-            .from("ingredients")
-            .select("id, name, unit, current_stock, min_stock, created_at, updated_at")
-            .order("name", { ascending: true })
-
-          if (error) {
-            throw error
-          }
-
-          return { data: (data as Ingredient[]) ?? [] }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to load ingredients") }
+        await delay()
+        return {
+          data: [...mockDb.tables].sort((a, b) => a.table_number.localeCompare(b.table_number)),
         }
       },
-      providesTags: ["Ingredient"],
+      providesTags: ["Table"],
     }),
 
-    createIngredient: builder.mutation<Ingredient, IngredientInput>({
+    createTable: builder.mutation<TableRecord, { table_number: string; capacity?: number }>({
       async queryFn(payload) {
-        try {
-          const supabase = createClient()
-          const { data, error } = await supabase
-            .from("ingredients")
-            .insert({
-              name: payload.name,
-              unit: payload.unit,
-              current_stock: payload.current_stock,
-              min_stock: payload.min_stock,
-            })
-            .select("id, name, unit, current_stock, min_stock, created_at, updated_at")
-            .single()
+        await delay()
 
-          if (error) {
-            throw error
-          }
-
-          await recalculateMenuAvailability()
-
-          return { data: data as Ingredient }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to create ingredient") }
+        const tableNumber = payload.table_number.trim()
+        if (!tableNumber) {
+          return { error: toError("table_number is required") }
         }
+
+        const duplicate = mockDb.tables.some(
+          (entry) => entry.table_number.toLowerCase() === tableNumber.toLowerCase(),
+        )
+        if (duplicate) {
+          return { error: toError("table_number must be unique") }
+        }
+
+        const record: TableRecord = {
+          id: uid("tbl"),
+          table_number: tableNumber,
+          capacity: payload.capacity,
+          status: "available",
+          active_order_count: 0,
+        }
+
+        mockDb.tables.push(record)
+        return { data: record }
       },
-      invalidatesTags: ["Ingredient", "Menu", "Recipe", "Dashboard"],
+      invalidatesTags: ["Table"],
     }),
 
-    updateIngredientStock: builder.mutation<
-      Ingredient,
-      { id: string; current_stock: number; min_stock?: number }
+    updateTable: builder.mutation<
+      TableRecord,
+      { id: string; table_number: string; capacity?: number }
     >({
       async queryFn(payload) {
-        try {
-          const supabase = createClient()
-          const updates: { current_stock: number; min_stock?: number } = {
-            current_stock: payload.current_stock,
-          }
+        await delay()
 
-          if (typeof payload.min_stock === "number") {
-            updates.min_stock = payload.min_stock
-          }
-
-          const { data, error } = await supabase
-            .from("ingredients")
-            .update(updates)
-            .eq("id", payload.id)
-            .select("id, name, unit, current_stock, min_stock, created_at, updated_at")
-            .single()
-
-          if (error) {
-            throw error
-          }
-
-          await recalculateMenuAvailability()
-          return { data: data as Ingredient }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to update stock") }
+        const index = mockDb.tables.findIndex((entry) => entry.id === payload.id)
+        if (index < 0) {
+          return { error: toError("Table not found") }
         }
+
+        const tableNumber = payload.table_number.trim()
+        if (!tableNumber) {
+          return { error: toError("table_number is required") }
+        }
+
+        const duplicate = mockDb.tables.some(
+          (entry) =>
+            entry.id !== payload.id &&
+            entry.table_number.toLowerCase() === tableNumber.toLowerCase(),
+        )
+        if (duplicate) {
+          return { error: toError("table_number must be unique") }
+        }
+
+        const updated = {
+          ...mockDb.tables[index],
+          table_number: tableNumber,
+          capacity: payload.capacity,
+        }
+
+        mockDb.tables[index] = updated
+        return { data: updated }
       },
-      invalidatesTags: ["Ingredient", "Menu", "Recipe", "Dashboard"],
+      invalidatesTags: ["Table"],
     }),
 
-    getMenuItems: builder.query<MenuItemWithRecipe[], void>({
-      async queryFn() {
-        try {
-          const supabase = createClient()
-          const { data: menuRows, error: menuError } = await supabase
-            .from("menu_items")
-            .select("id, name, description, price, is_available")
-            .order("name", { ascending: true })
-
-          if (menuError) {
-            throw menuError
-          }
-
-          const menuIds = (menuRows ?? []).map((row) => row.id)
-          let recipeRows: any[] = []
-          if (menuIds.length > 0) {
-            const recipeResult = await supabase
-              .from("menu_recipes")
-              .select(
-                "id, menu_item_id, ingredient_id, quantity_required, ingredients(id, name, unit, current_stock)",
-              )
-              .in("menu_item_id", menuIds)
-
-            if (recipeResult.error) {
-              throw recipeResult.error
-            }
-
-            recipeRows = recipeResult.data ?? []
-          }
-
-          const recipeByMenuId = new Map<string, MenuItemWithRecipe["recipe"]>()
-
-          for (const row of recipeRows ?? []) {
-            const list = recipeByMenuId.get(row.menu_item_id as string) ?? []
-            const ingredient = Array.isArray(row.ingredients)
-              ? row.ingredients[0]
-              : row.ingredients
-
-            list.push({
-              ingredient_id: row.ingredient_id as string,
-              quantity_required: Number(row.quantity_required),
-              ingredient_name: ingredient?.name as string | undefined,
-              ingredient_unit: ingredient?.unit as string | undefined,
-              current_stock:
-                typeof ingredient?.current_stock === "number"
-                  ? ingredient.current_stock
-                  : undefined,
-            })
-
-            recipeByMenuId.set(row.menu_item_id as string, list)
-          }
-
-          const response: MenuItemWithRecipe[] = (menuRows ?? []).map((row) => ({
-            id: row.id as string,
-            name: row.name as string,
-            description: (row.description as string) ?? "",
-            price: Number(row.price),
-            is_available: Boolean(row.is_available),
-            recipe: recipeByMenuId.get(row.id as string) ?? [],
-          }))
-
-          return { data: response }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to load menu") }
-        }
-      },
-      providesTags: ["Menu", "Recipe"],
-    }),
-
-    mapRecipe: builder.mutation<{ success: true }, MapRecipePayload>({
+    deleteTable: builder.mutation<{ success: boolean; id: string }, { id: string }>({
       async queryFn(payload) {
-        try {
-          const supabase = createClient()
-          const { error: deleteError } = await supabase
-            .from("menu_recipes")
-            .delete()
-            .eq("menu_item_id", payload.menu_item_id)
+        await delay()
+        mockDb.tables = mockDb.tables.filter((entry) => entry.id !== payload.id)
+        return { data: { success: true, id: payload.id } }
+      },
+      invalidatesTags: ["Table"],
+    }),
 
-          if (deleteError) {
-            throw deleteError
-          }
+    // ── Menu ──────────────────────────────────
 
-          if (payload.ingredients.length > 0) {
-            const { error: insertError } = await supabase.from("menu_recipes").insert(
-              payload.ingredients.map((ingredient) => ({
-                menu_item_id: payload.menu_item_id,
-                ingredient_id: ingredient.ingredient_id,
-                quantity_required: ingredient.quantity_required,
-              })),
-            )
+    getMenu: builder.query<MenuRecord[], void>({
+      async queryFn() {
+        await delay()
+        return { data: mockDb.menu }
+      },
+      providesTags: ["Menu"],
+    }),
 
-            if (insertError) {
-              throw insertError
-            }
-          }
+    // ── Sessions ──────────────────────────────
 
-          await recalculateMenuAvailability()
-          return { data: { success: true } }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to map recipe") }
+    getTableSessions: builder.query<(TableSession & { orders: OrderRecord[] })[], void>({
+      async queryFn() {
+        await delay()
+
+        const openSessions = mockDb.sessions.filter((s) => s.status === "open")
+        const result = openSessions.map((session) => ({
+          ...session,
+          orders: mockDb.orders.filter((o) => session.order_ids.includes(o.id)),
+        }))
+
+        return { data: result }
+      },
+      providesTags: ["Session"],
+    }),
+
+    getTableSessionById: builder.query<
+      TableSession & { orders: OrderRecord[] },
+      { id: string }
+    >({
+      async queryFn(payload) {
+        await delay()
+
+        const session = mockDb.sessions.find((s) => s.id === payload.id)
+        if (!session) {
+          return { error: toError("Session not found") }
+        }
+
+        return {
+          data: {
+            ...session,
+            orders: mockDb.orders.filter((o) => session.order_ids.includes(o.id)),
+          },
         }
       },
-      invalidatesTags: ["Menu", "Recipe", "Ingredient"],
+      providesTags: ["Session"],
+    }),
+
+    closeTableSession: builder.mutation<
+      InvoiceRecord,
+      { session_id: string }
+    >({
+      async queryFn(payload) {
+        await delay()
+
+        const session = mockDb.sessions.find((s) => s.id === payload.session_id)
+        if (!session) {
+          return { error: toError("Session not found") }
+        }
+
+        if (session.status === "closed") {
+          const existing = mockDb.invoices.find((inv) => inv.session_id === session.id)
+          if (existing) return { data: existing }
+          return { error: toError("Session already closed") }
+        }
+
+        // Mark all active session orders as delivered
+        const sessionOrders = mockDb.orders.filter((o) => session.order_ids.includes(o.id))
+        sessionOrders.forEach((o) => {
+          if (ACTIVE_STATUSES.includes(o.status)) {
+            o.status = "delivered"
+          }
+        })
+
+        // Recalculate and close session
+        recalcSessionTotals(session)
+        session.status = "closed"
+        session.closed_at = new Date().toISOString()
+
+        // Aggregate all items from all orders
+        const allItems = sessionOrders.flatMap((o) => o.items)
+
+        const invoice: InvoiceRecord = {
+          id: uid("inv"),
+          session_id: session.id,
+          order_type: "table",
+          table_number: session.table_number,
+          items: allItems,
+          subtotal: session.subtotal,
+          gst: session.gst,
+          total: session.total,
+          created_at: new Date().toISOString(),
+        }
+
+        mockDb.invoices.unshift(invoice)
+
+        // Update table status
+        syncTableOccupancy(session.table_id)
+
+        return { data: invoice }
+      },
+      invalidatesTags: ["Session", "Invoice", "Table", "Order", "History", "Insights"],
+    }),
+
+    // ── Orders ────────────────────────────────
+
+    createOrder: builder.mutation<
+      OrderRecord,
+      {
+        order_type: OrderType
+        table_id?: string
+        items: CreateOrderItemInput[]
+      }
+    >({
+      async queryFn(payload) {
+        await delay()
+
+        if (payload.items.length === 0) {
+          return { error: toError("Add at least one menu item") }
+        }
+
+        if (payload.order_type === "table" && !payload.table_id) {
+          return { error: toError("Select a table for dine-in order") }
+        }
+
+        const { mapped, subtotal, gst, total } = toOrderItems(payload.items)
+        const table = payload.table_id
+          ? mockDb.tables.find((entry) => entry.id === payload.table_id)
+          : undefined
+
+        let sessionId: string | undefined
+
+        // For table orders, find or create a session
+        if (payload.order_type === "table" && payload.table_id && table) {
+          let openSession = mockDb.sessions.find(
+            (s) => s.table_id === payload.table_id && s.status === "open",
+          )
+
+          if (!openSession) {
+            openSession = {
+              id: uid("ses"),
+              table_id: payload.table_id,
+              table_number: table.table_number,
+              status: "open",
+              order_ids: [],
+              subtotal: 0,
+              gst: 0,
+              total: 0,
+              created_at: new Date().toISOString(),
+            }
+            mockDb.sessions.push(openSession)
+          }
+
+          sessionId = openSession.id
+        }
+
+        const order: OrderRecord = {
+          id: uid("ord"),
+          order_type: payload.order_type,
+          table_id: payload.table_id,
+          table_number: table?.table_number,
+          session_id: sessionId,
+          status: "pending",
+          items: mapped,
+          subtotal,
+          gst,
+          total,
+          created_at: new Date().toISOString(),
+        }
+
+        mockDb.orders.unshift(order)
+
+        // Update session
+        if (sessionId) {
+          const session = mockDb.sessions.find((s) => s.id === sessionId)
+          if (session) {
+            session.order_ids.push(order.id)
+            recalcSessionTotals(session)
+          }
+          syncTableOccupancy(payload.table_id!)
+        }
+
+        return { data: order }
+      },
+      invalidatesTags: ["Order", "History", "Table", "Session", "Insights"],
     }),
 
     getOrders: builder.query<OrderRecord[], void>({
       async queryFn() {
-        try {
-          const supabase = createClient()
-          const { data: orderRows, error: orderError } = await supabase
-            .from("orders")
-            .select("id, status, subtotal, gst, total, created_at")
-            .order("created_at", { ascending: false })
-
-          if (orderError) {
-            throw orderError
-          }
-
-          const orderIds = (orderRows ?? []).map((order) => order.id)
-          let itemRows: any[] = []
-          if (orderIds.length > 0) {
-            const itemResult = await supabase
-              .from("order_items")
-              .select(
-                "id, order_id, menu_item_id, quantity, unit_price, line_total, menu_items(name)",
-              )
-              .in("order_id", orderIds)
-
-            if (itemResult.error) {
-              throw itemResult.error
-            }
-
-            itemRows = itemResult.data ?? []
-          }
-
-          const itemsByOrderId = new Map<string, OrderRecord["items"]>()
-
-          for (const item of itemRows ?? []) {
-            const list = itemsByOrderId.get(item.order_id as string) ?? []
-            const menuItem = Array.isArray(item.menu_items) ? item.menu_items[0] : item.menu_items
-
-            list.push({
-              id: item.id as string,
-              menu_item_id: item.menu_item_id as string,
-              quantity: Number(item.quantity),
-              unit_price: Number(item.unit_price),
-              line_total: Number(item.line_total),
-              menu_item_name: (menuItem?.name as string) ?? "Unknown Item",
-            })
-
-            itemsByOrderId.set(item.order_id as string, list)
-          }
-
-          const mapped: OrderRecord[] = (orderRows ?? []).map((row) => ({
-            id: row.id as string,
-            status: row.status as OrderRecord["status"],
-            subtotal: Number(row.subtotal),
-            gst: Number(row.gst),
-            total: Number(row.total),
-            created_at: row.created_at as string,
-            items: itemsByOrderId.get(row.id as string) ?? [],
-          }))
-
-          return { data: mapped }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to load orders") }
+        await delay()
+        return {
+          data: mockDb.orders.filter((entry) => ACTIVE_STATUSES.includes(entry.status)),
         }
       },
       providesTags: ["Order"],
     }),
 
-    createOrder: builder.mutation<OrderRecord, CreateOrderPayload>({
+    updateOrderStatus: builder.mutation<OrderRecord, { id: string; status: OrderStatus }>({
       async queryFn(payload) {
-        try {
-          const supabase = createClient()
+        await delay()
 
-          if (payload.items.length === 0) {
-            throw new Error("Please add at least one item")
-          }
-
-          const menuItemIds = payload.items.map((item) => item.menu_item_id)
-          const { data: menuRows, error: menuError } = await supabase
-            .from("menu_items")
-            .select("id, name, price, is_available")
-            .in("id", menuItemIds)
-
-          if (menuError) {
-            throw menuError
-          }
-
-          const menuById = new Map<string, MenuItemRecord>(
-            (menuRows ?? []).map((item) => [
-              item.id as string,
-              {
-                id: item.id as string,
-                name: item.name as string,
-                description: "",
-                price: Number(item.price),
-                is_available: Boolean(item.is_available),
-              },
-            ]),
-          )
-
-          for (const item of payload.items) {
-            const menuItem = menuById.get(item.menu_item_id)
-            if (!menuItem) {
-              throw new Error("Invalid menu item in order")
-            }
-            if (menuItem.is_available === false) {
-              throw new Error(`${menuItem.name} is unavailable`)
-            }
-          }
-
-          const subtotal = payload.items.reduce((sum, item) => {
-            const menuItem = menuById.get(item.menu_item_id)
-            const price = menuItem ? Number(menuItem.price) : 0
-            return sum + price * item.quantity
-          }, 0)
-
-          const gst = Number((subtotal * 0.05).toFixed(2))
-          const total = Number((subtotal + gst).toFixed(2))
-
-          const { data: insertedOrder, error: orderInsertError } = await supabase
-            .from("orders")
-            .insert({
-              status: payload.status ?? "pending",
-              subtotal,
-              gst,
-              total,
-            })
-            .select("id, status, subtotal, gst, total, created_at")
-            .single()
-
-          if (orderInsertError) {
-            throw orderInsertError
-          }
-
-          const orderItemsPayload = payload.items.map((item) => {
-            const menuItem = menuById.get(item.menu_item_id)
-            const unitPrice = Number(menuItem?.price ?? 0)
-
-            return {
-              order_id: insertedOrder.id,
-              menu_item_id: item.menu_item_id,
-              quantity: item.quantity,
-              unit_price: unitPrice,
-              line_total: Number((unitPrice * item.quantity).toFixed(2)),
-            }
-          })
-
-          const { data: insertedItems, error: orderItemsError } = await supabase
-            .from("order_items")
-            .insert(orderItemsPayload)
-            .select("id, order_id, menu_item_id, quantity, unit_price, line_total")
-
-          if (orderItemsError) {
-            throw orderItemsError
-          }
-
-          await deductIngredientsForOrder(payload.items)
-
-          return {
-            data: {
-              id: insertedOrder.id as string,
-              status: insertedOrder.status as OrderRecord["status"],
-              subtotal: Number(insertedOrder.subtotal),
-              gst: Number(insertedOrder.gst),
-              total: Number(insertedOrder.total),
-              created_at: insertedOrder.created_at as string,
-              items: (insertedItems ?? []).map((item) => ({
-                id: item.id as string,
-                menu_item_id: item.menu_item_id as string,
-                quantity: Number(item.quantity),
-                unit_price: Number(item.unit_price),
-                line_total: Number(item.line_total),
-                menu_item_name:
-                  menuById.get(item.menu_item_id as string)?.name ?? "Unknown Item",
-              })),
-            },
-          }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to create order") }
+        const index = mockDb.orders.findIndex((entry) => entry.id === payload.id)
+        if (index < 0) {
+          return { error: toError("Order not found") }
         }
+
+        const updated = {
+          ...mockDb.orders[index],
+          status: payload.status,
+        }
+
+        mockDb.orders[index] = updated
+
+        if (updated.table_id) {
+          syncTableOccupancy(updated.table_id)
+        }
+
+        return { data: updated }
       },
-      invalidatesTags: ["Order", "Ingredient", "Menu", "Recipe", "Dashboard", "Invoice"],
+      invalidatesTags: ["Order", "History", "Table", "Session", "Insights"],
     }),
 
-    updateOrderStatus: builder.mutation<OrderRecord, { order_id: string; status: OrderRecord["status"] }>({
-      async queryFn(payload) {
-        try {
-          const supabase = createClient()
-          const { data, error } = await supabase
-            .from("orders")
-            .update({ status: payload.status })
-            .eq("id", payload.order_id)
-            .select("id, status, subtotal, gst, total, created_at")
-            .single()
+    getOrderHistory: builder.query<
+      OrderRecord[],
+      {
+        date?: string
+        table_id?: string
+        order_type?: OrderType | "all"
+      }
+    >({
+      async queryFn(filters) {
+        await delay()
 
-          if (error) {
-            throw error
-          }
+        let records = mockDb.orders.filter((entry) => HISTORY_STATUSES.includes(entry.status))
 
-          return {
-            data: {
-              id: data.id as string,
-              status: data.status as OrderRecord["status"],
-              subtotal: Number(data.subtotal),
-              gst: Number(data.gst),
-              total: Number(data.total),
-              created_at: data.created_at as string,
-              items: [],
-            },
-          }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to update order status") }
+        if (filters.date) {
+          records = records.filter((entry) => entry.created_at.slice(0, 10) === filters.date)
         }
+
+        if (filters.table_id) {
+          records = records.filter((entry) => entry.table_id === filters.table_id)
+        }
+
+        if (filters.order_type && filters.order_type !== "all") {
+          records = records.filter((entry) => entry.order_type === filters.order_type)
+        }
+
+        return { data: records }
       },
-      invalidatesTags: ["Order"],
+      providesTags: ["History"],
     }),
 
-    getInvoices: builder.query<Invoice[], void>({
-      async queryFn() {
-        try {
-          const supabase = createClient()
-          const { data, error } = await supabase
-            .from("invoices")
-            .select("id, order_id, subtotal, gst, total, status, created_at")
-            .order("created_at", { ascending: false })
+    // ── Takeaway ──────────────────────────────
 
-          if (error) {
-            throw error
+    createTakeawayOrder: builder.mutation<
+      { order: OrderRecord; invoice: InvoiceRecord },
+      { items: CreateOrderItemInput[] }
+    >({
+      async queryFn(payload) {
+        await delay()
+
+        if (payload.items.length === 0) {
+          return { error: toError("Add at least one menu item") }
+        }
+
+        const { mapped, subtotal, gst, total } = toOrderItems(payload.items)
+
+        const order: OrderRecord = {
+          id: uid("ord"),
+          order_type: "takeaway",
+          status: "delivered",
+          items: mapped,
+          subtotal,
+          gst,
+          total,
+          created_at: new Date().toISOString(),
+        }
+
+        mockDb.orders.unshift(order)
+
+        const invoice: InvoiceRecord = {
+          id: uid("inv"),
+          order_id: order.id,
+          order_type: "takeaway",
+          items: mapped,
+          subtotal,
+          gst,
+          total,
+          created_at: new Date().toISOString(),
+        }
+
+        mockDb.invoices.unshift(invoice)
+
+        return { data: { order, invoice } }
+      },
+      invalidatesTags: ["Order", "History", "Invoice", "Insights"],
+    }),
+
+    // ── Invoices ──────────────────────────────
+
+    generateInvoice: builder.mutation<InvoiceRecord, { order_id?: string; session_id?: string }>({
+      async queryFn(payload) {
+        await delay()
+
+        if (payload.session_id) {
+          const session = mockDb.sessions.find((s) => s.id === payload.session_id)
+          if (!session) return { error: toError("Session not found") }
+
+          const existing = mockDb.invoices.find((inv) => inv.session_id === payload.session_id)
+          if (existing) return { data: existing }
+
+          const sessionOrders = mockDb.orders.filter((o) => session.order_ids.includes(o.id))
+          const allItems = sessionOrders.flatMap((o) => o.items)
+
+          const invoice: InvoiceRecord = {
+            id: uid("inv"),
+            session_id: session.id,
+            order_type: "table",
+            table_number: session.table_number,
+            items: allItems,
+            subtotal: session.subtotal,
+            gst: session.gst,
+            total: session.total,
+            created_at: new Date().toISOString(),
           }
 
-          return { data: (data as Invoice[]) ?? [] }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to load invoices") }
+          mockDb.invoices.unshift(invoice)
+          return { data: invoice }
         }
+
+        if (payload.order_id) {
+          const order = mockDb.orders.find((entry) => entry.id === payload.order_id)
+          if (!order) return { error: toError("Order not found") }
+
+          const existing = mockDb.invoices.find((entry) => entry.order_id === payload.order_id)
+          if (existing) return { data: existing }
+
+          const invoice: InvoiceRecord = {
+            id: uid("inv"),
+            order_id: order.id,
+            order_type: order.order_type,
+            table_number: order.table_number,
+            items: order.items,
+            subtotal: order.subtotal,
+            gst: order.gst,
+            total: order.total,
+            created_at: new Date().toISOString(),
+          }
+
+          mockDb.invoices.unshift(invoice)
+          return { data: invoice }
+        }
+
+        return { error: toError("Provide order_id or session_id") }
+      },
+      invalidatesTags: ["Invoice"],
+    }),
+
+    getInvoice: builder.query<InvoiceRecord, { id: string }>({
+      async queryFn(payload) {
+        await delay()
+
+        const invoice = mockDb.invoices.find((entry) => entry.id === payload.id)
+        if (!invoice) {
+          return { error: toError("Invoice not found") }
+        }
+
+        return { data: invoice }
       },
       providesTags: ["Invoice"],
     }),
 
-    createInvoice: builder.mutation<Invoice, CreateInvoicePayload>({
+    // ── Insights ──────────────────────────────
+
+    getInsights: builder.query<InsightsRecord, { period: InsightsPeriod }>({
       async queryFn(payload) {
-        try {
-          const supabase = createClient()
-          const { data: order, error: orderError } = await supabase
-            .from("orders")
-            .select("id, subtotal, gst, total")
-            .eq("id", payload.order_id)
-            .single()
-
-          if (orderError) {
-            throw orderError
-          }
-
-          const { data: invoice, error: invoiceError } = await supabase
-            .from("invoices")
-            .insert({
-              order_id: order.id,
-              subtotal: order.subtotal,
-              gst: order.gst,
-              total: order.total,
-              status: "generated",
-            })
-            .select("id, order_id, subtotal, gst, total, status, created_at")
-            .single()
-
-          if (invoiceError) {
-            throw invoiceError
-          }
-
-          return { data: invoice as Invoice }
-        } catch (error) {
-          return { error: toApiError(error, "Failed to generate invoice") }
-        }
+        await delay(300)
+        return { data: computeInsights(payload.period) }
       },
-      invalidatesTags: ["Invoice"],
+      providesTags: ["Insights"],
     }),
   }),
 })
 
 export const {
-  useCreateIngredientMutation,
-  useCreateInvoiceMutation,
-  useCreateOrderMutation,
-  useGetDashboardStatsQuery,
-  useGetIngredientsQuery,
-  useGetInvoicesQuery,
-  useGetMenuItemsQuery,
-  useGetOrdersQuery,
   useLoginMutation,
-  useMapRecipeMutation,
-  useUpdateIngredientStockMutation,
+  useGetTablesQuery,
+  useCreateTableMutation,
+  useUpdateTableMutation,
+  useDeleteTableMutation,
+  useGetMenuQuery,
+  useCreateOrderMutation,
+  useGetOrdersQuery,
   useUpdateOrderStatusMutation,
+  useGetOrderHistoryQuery,
+  useGetTableSessionsQuery,
+  useGetTableSessionByIdQuery,
+  useCloseTableSessionMutation,
+  useCreateTakeawayOrderMutation,
+  useGenerateInvoiceMutation,
+  useGetInvoiceQuery,
+  useGetInsightsQuery,
 } = rimsApi

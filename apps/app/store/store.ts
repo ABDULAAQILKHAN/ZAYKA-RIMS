@@ -5,6 +5,7 @@ import { ordersApi } from './ordersApi'
 import { addressApi } from './addressApi'
 import { cartApi } from './cartApi'
 import { dashboardApi } from './dashboardApi'
+import { rimsContractApi } from './api'
 import authReducer from './authSlice'
 
 export const store = configureStore({
@@ -15,6 +16,7 @@ export const store = configureStore({
     [addressApi.reducerPath]: addressApi.reducer,
     [cartApi.reducerPath]: cartApi.reducer,
     [dashboardApi.reducerPath]: dashboardApi.reducer,
+    [rimsContractApi.reducerPath]: rimsContractApi.reducer,
     auth: authReducer,
   },
   middleware: (getDefault) => getDefault().concat(
@@ -23,7 +25,8 @@ export const store = configureStore({
     ordersApi.middleware, 
     addressApi.middleware,
     cartApi.middleware,
-    dashboardApi.middleware
+    dashboardApi.middleware,
+    rimsContractApi.middleware
   )
 })
 
