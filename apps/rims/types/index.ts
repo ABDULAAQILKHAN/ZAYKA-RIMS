@@ -8,41 +8,41 @@ export interface Ingredient {
   id: string
   name: string
   unit: string
-  current_stock: number
-  min_stock: number
-  created_at?: string
-  updated_at?: string
+  currentStock: number
+  minStock: number
+  createdAt?: string
+  updatedAt?: string
 }
 
 export interface IngredientInput {
   name: string
   unit: string
-  current_stock: number
-  min_stock: number
+  currentStock: number
+  minStock: number
 }
 
 export interface RecipeIngredient {
-  ingredient_id: string
-  quantity_required: number
+  ingredientId: string
+  quantityRequired: number
 }
 
 export interface MenuItemRecord
   extends Omit<MenuItem, "isAvailable" | "image" | "isVeg" | "category"> {
-  is_available: boolean
+  isAvailable: boolean
 }
 
 export interface MenuItemWithRecipe extends MenuItemRecord {
   recipe: Array<
     RecipeIngredient & {
-      ingredient_name?: string
-      ingredient_unit?: string
-      current_stock?: number
+      ingredientName?: string
+      ingredientUnit?: string
+      currentStock?: number
     }
   >
 }
 
 export interface OrderItemInput {
-  menu_item_id: string
+  menuItemId: string
   quantity: number
 }
 
@@ -52,23 +52,23 @@ export interface OrderRecord {
   subtotal: number
   gst: number
   total: number
-  created_at: string
+  createdAt: string
   items: Array<{
     id: string
-    menu_item_id: string
+    menuItemId: string
     quantity: number
-    unit_price: number
-    line_total: number
-    menu_item_name: string
+    unitPrice: number
+    lineTotal: number
+    menuItemName: string
   }>
 }
 
 export interface Invoice {
   id: string
-  order_id: string
+  orderId: string
   subtotal: number
   gst: number
   total: number
   status: "generated" | "paid"
-  created_at: string
+  createdAt: string
 }

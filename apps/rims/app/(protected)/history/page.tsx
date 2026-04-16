@@ -31,8 +31,8 @@ export default function HistoryPage() {
   const { data: tables = [] } = useGetTablesQuery()
   const { data: history = [], isLoading } = useGetOrderHistoryQuery({
     date: date || undefined,
-    table_id: tableId === "all" ? undefined : tableId,
-    order_type: orderType,
+    tableId: tableId === "all" ? undefined : tableId,
+    orderType: orderType,
   })
 
   useEffect(() => {
@@ -120,34 +120,34 @@ export default function HistoryPage() {
                   <TableCell>
                     <Badge
                       variant={
-                        order?.order_type === "table"
+                        order?.orderType === "table"
                           ? "default"
-                          : order?.order_type === "takeaway"
+                          : order?.orderType === "takeaway"
                           ? "secondary"
                           : "outline"
                       }
                     >
-                      {order?.order_type}
+                      {order?.orderType}
                     </Badge>
                   </TableCell>
                   <TableCell>
                     {order?.tableNumber ?? "-"}
-                    {order?.session_id ? (
+                    {order?.sessionId ? (
                       <span className="block text-xs text-muted-foreground">
-                        {order?.session_id}
+                        {order?.sessionId}
                       </span>
                     ) : null}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate">
                     {order?.items
-                      ?.map((item: any) => `${item?.menu_item_name ?? "Unknown"} x${item?.quantity ?? 0}`)
+                      ?.map((item: any) => `${item?.menuItemName ?? "Unknown"} x${item?.quantity ?? 0}`)
                       .join(", ") ?? ""}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{order?.status}</Badge>
                   </TableCell>
                   <TableCell>₹{(order?.total ?? 0).toFixed(2)}</TableCell>
-                  <TableCell>{order?.created_at ? new Date(order.created_at).toLocaleString() : "N/A"}</TableCell>
+                  <TableCell>{order?.createdAt ? new Date(order.createdAt).toLocaleString() : "N/A"}</TableCell>
                 </TableRow>
               ))}
               {isLoading ? (

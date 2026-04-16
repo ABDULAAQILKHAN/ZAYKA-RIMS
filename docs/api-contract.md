@@ -201,7 +201,7 @@ Success Response:
     "id": "string",
     "name": "string",
     "price": 280,
-    "is_available": true
+    "isAvailable": true
   }
 ]
 ```

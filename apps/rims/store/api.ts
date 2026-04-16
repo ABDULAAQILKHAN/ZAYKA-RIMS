@@ -12,14 +12,14 @@ export type TableRecord = {
   tableNumber: number
   capacity?: number
   status: "available" | "occupied"
-  active_order_count: number
+  activeOrderCount: number
 }
 
 export type MenuRecord = {
   id: string
   name: string
   price: number
-  is_available: boolean
+  isAvailable: boolean
 }
 
 export type OrderType = "table" | "delivery" | "takeaway"
@@ -35,105 +35,120 @@ export type OrderStatus =
   | "cancelled"
 
 export type CreateOrderItemInput = {
-  menu_item_id: string
+  menuItemId: string
   quantity: number
+  size?: "Full" | "Half"
 }
 
 export type OrderRecord = {
   id: string
-  order_type: OrderType
-  table_id?: string
+  orderType: OrderType
+  tableId?: string
   tableNumber?: number
-  session_id?: string
+  sessionId?: string
   status: OrderStatus
   items: Array<{
     id: string
-    menu_item_id: string
-    menu_item_name: string
+    menuItemId: string
+    menuItemName: string
     quantity: number
-    unit_price: number
-    line_total: number
+    unitPrice: number
+    lineTotal: number
+    size?: "Full" | "Half"
   }>
   subtotal: number
   gst: number
   total: number
-  created_at: string
+  createdAt: string
 }
 
 export type TableSession = {
   id: string
-  table_id: string
+  tableId: string
   tableNumber: number
   status: "open" | "closed"
-  order_ids: string[]
+  orderIds: string[]
   subtotal: number
   gst: number
   total: number
-  created_at: string
-  closed_at?: string
+  createdAt: string
+  closedAt?: string
 }
 
 export type InvoiceRecord = {
   id: string
-  order_id?: string
-  session_id?: string
-  order_type: OrderType
+  orderId?: string
+  sessionId?: string
+  orderType: OrderType
   tableNumber?: number
   items: OrderRecord["items"]
   subtotal: number
   gst: number
   total: number
-  created_at: string
+  createdAt: string
 }
 
 export type InsightsPeriod = "week" | "month"
 
 export type InsightsRecord = {
   period: InsightsPeriod
-  total_revenue: number
-  total_orders: number
-  average_order_value: number
-  order_type_breakdown: {
+  totalRevenue: number
+  totalOrders: number
+  averageOrderValue: number
+  orderTypeBreakdown: {
     table: number
     takeaway: number
     delivery: number
   }
-  top_items: Array<{
+  topItems: Array<{
     name: string
     quantity: number
     revenue: number
   }>
-  table_utilization: Array<{
+  tableUtilization: Array<{
     tableNumber: number
-    session_count: number
-    total_revenue: number
+    sessionCount: number
+    totalRevenue: number
   }>
-  daily_revenue: Array<{
+  dailyRevenue: Array<{
     date: string
     revenue: number
-    order_count: number
+    orderCount: number
   }>
 }
 
 const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 
+const rawBaseQuery = fetchBaseQuery({
+  baseUrl,
+  prepareHeaders: (headers, { getState }: any) => {
+    const state = getState() as { auth?: { token?: string | null } }
+    const token = state?.auth?.token
+    if (token) headers.set('authorization', `Bearer ${token}`)
+    return headers
+  }
+})
+
+const customBaseQuery = async (args: any, api: any, extraOptions: any) => {
+  const result = await rawBaseQuery(args, api, extraOptions)
+  if (result.data && typeof result.data === 'object' && 'data' in result.data) {
+    return { ...result, data: (result.data as any).data }
+  }
+  return result
+}
+
 export const rimsApi = createApi({
   reducerPath: "rimsApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl,
-    prepareHeaders: (headers, { getState }: any) => {
-      const state = getState() as { auth?: { token?: string | null } }
-      const token = state?.auth?.token
-      if (token) headers.set('authorization', `Bearer ${token}`)
-      return headers
-    }
-  }),
+  baseQuery: customBaseQuery,
   tagTypes: ["Auth", "Table", "Menu", "Order", "History", "Invoice", "Session", "Insights"],
   endpoints: (builder) => ({
     // ── Tables ────────────────────────────────
 
-    getTables: builder.query<TableRecord[], void>({
-      query: () => 'tables',
+    getTables: builder.query<TableRecord[], { status?: "available" | "occupied" } | void>({
+      query: (arg) => {
+        if (arg && arg.status) return `tables?status=${arg.status}`;
+        return 'tables';
+      },
       providesTags: ["Table"],
     }),
 
@@ -190,10 +205,10 @@ export const rimsApi = createApi({
 
     closeTableSession: builder.mutation<
       InvoiceRecord,
-      { session_id: string }
+      { sessionId: string }
     >({
-      query: ({ session_id }) => ({
-        url: `sessions/${session_id}/close`,
+      query: ({ sessionId }) => ({
+        url: `sessions/${sessionId}/close`,
         method: 'POST',
       }),
       invalidatesTags: ["Session", "Invoice", "Table", "Order", "History", "Insights"],
@@ -204,8 +219,8 @@ export const rimsApi = createApi({
     createOrder: builder.mutation<
       OrderRecord,
       {
-        order_type: OrderType
-        table_id?: string
+        orderType: OrderType
+        tableId?: string
         items: CreateOrderItemInput[]
       }
     >({
@@ -235,15 +250,15 @@ export const rimsApi = createApi({
       OrderRecord[],
       {
         date?: string
-        table_id?: string
-        order_type?: OrderType | "all"
+        tableId?: string
+        orderType?: OrderType | "all"
       }
     >({
       query: (filters) => {
         const params = new URLSearchParams()
         if (filters.date) params.append('date', filters.date)
-        if (filters.table_id) params.append('table_id', filters.table_id)
-        if (filters.order_type && filters.order_type !== 'all') params.append('order_type', filters.order_type)
+        if (filters.tableId) params.append('tableId', filters.tableId)
+        if (filters.orderType && filters.orderType !== 'all') params.append('orderType', filters.orderType)
         return `orders/history?${params.toString()}`
       },
       providesTags: ["History"],
@@ -253,10 +268,10 @@ export const rimsApi = createApi({
 
     createTakeawayOrder: builder.mutation<
       { order: OrderRecord; invoice: InvoiceRecord },
-      { items: CreateOrderItemInput[] }
+      { items: CreateOrderItemInput[]; orderType: OrderType }
     >({
       query: (payload) => ({
-        url: 'takeaway/orders',
+        url: 'orders/takeaway',
         method: 'POST',
         body: payload,
       }),
@@ -265,7 +280,7 @@ export const rimsApi = createApi({
 
     // ── Invoices ──────────────────────────────
 
-    generateInvoice: builder.mutation<InvoiceRecord, { order_id?: string; session_id?: string }>({
+    generateInvoice: builder.mutation<InvoiceRecord, { orderId?: string; sessionId?: string }>({
       query: (payload) => ({
         url: 'invoices',
         method: 'POST',
@@ -276,6 +291,11 @@ export const rimsApi = createApi({
 
     getInvoice: builder.query<InvoiceRecord, { id: string }>({
       query: ({ id }) => `invoices/${id}`,
+      providesTags: ["Invoice"],
+    }),
+
+    getInvoices: builder.query<InvoiceRecord[], void>({
+      query: () => 'invoices',
       providesTags: ["Invoice"],
     }),
 
@@ -304,5 +324,6 @@ export const {
   useCreateTakeawayOrderMutation,
   useGenerateInvoiceMutation,
   useGetInvoiceQuery,
+  useGetInvoicesQuery,
   useGetInsightsQuery,
 } = rimsApi

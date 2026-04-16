@@ -19,6 +19,7 @@ import {
 import {
   useCloseTableSessionMutation,
   useGetTableSessionsQuery,
+  useGetInvoicesQuery,
   type InvoiceRecord,
   type TableSession,
   type OrderRecord,
@@ -27,6 +28,7 @@ import {
 export default function BillingPage() {
   const [isMounted, setIsMounted] = useState(false)
   const { data: sessions = [], isLoading: sessionsLoading } = useGetTableSessionsQuery()
+  const { data: invoices = [], isLoading: invoicesLoading } = useGetInvoicesQuery()
   const [closeSession, { isLoading: closingSession }] = useCloseTableSessionMutation()
 
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
@@ -49,7 +51,7 @@ export default function BillingPage() {
     if (!selectedSessionId) return
 
     try {
-      const invoice = await closeSession({ session_id: selectedSessionId }).unwrap()
+      const invoice = await closeSession({ sessionId: selectedSessionId }).unwrap()
       setGeneratedInvoice(invoice)
     } catch {
       // Error handled by RTK Query
@@ -63,22 +65,22 @@ export default function BillingPage() {
           string,
           {
             id: string
-            menu_item_id: string
-            menu_item_name: string
+            menuItemId: string
+            menuItemName: string
             quantity: number
-            unit_price: number
-            line_total: number
+            unitPrice: number
+            lineTotal: number
           }
         >()
 
         selectedSession.orders?.forEach((order) => {
           order.items?.forEach((item) => {
-            const existing = itemMap.get(item.menu_item_id)
+            const existing = itemMap.get(item.menuItemId)
             if (existing) {
               existing.quantity += item.quantity
-              existing.line_total += item.line_total
+              existing.lineTotal += item.lineTotal
             } else {
-              itemMap.set(item.menu_item_id, { ...item })
+              itemMap.set(item.menuItemId, { ...item })
             }
           })
         })
@@ -119,8 +121,8 @@ export default function BillingPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {sessions.length > 0 && sessions?.map((session) => {
                 const isSelected = selectedSessionId === session?.id
-                const duration = session?.created_at 
-                  ? Math.round((Date.now() - new Date(session.created_at).getTime()) / 60000)
+                const duration = session?.createdAt 
+                  ? Math.round((Date.now() - new Date(session.createdAt).getTime()) / 60000)
                   : 0
 
                 return (
@@ -161,7 +163,7 @@ export default function BillingPage() {
                 <CardTitle>{selectedSession.tableNumber} — Session Details</CardTitle>
                 <CardDescription>
                   Session {selectedSession.id} · Started{" "}
-                  {selectedSession.created_at ? new Date(selectedSession.created_at).toLocaleTimeString() : "N/A"}
+                  {selectedSession.createdAt ? new Date(selectedSession.createdAt).toLocaleTimeString() : "N/A"}
                 </CardDescription>
               </div>
               <Button onClick={onCloseAndBill} disabled={closingSession}>
@@ -189,10 +191,10 @@ export default function BillingPage() {
                     </div>
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {order?.items?.map((i: any) => `${i?.menu_item_name ?? "Unknown"} x${i?.quantity ?? 0}`).join(" · ") ?? ""}
+                    {order?.items?.map((i: any) => `${i?.menuItemName ?? "Unknown"} x${i?.quantity ?? 0}`).join(" · ") ?? ""}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Placed at {order?.created_at ? new Date(order.created_at).toLocaleTimeString() : "N/A"}
+                    Placed at {order?.createdAt ? new Date(order.createdAt).toLocaleTimeString() : "N/A"}
                   </p>
                 </div>
               ))}
@@ -214,11 +216,11 @@ export default function BillingPage() {
                 </TableHeader>
                 <TableBody>
                   {aggregatedItems.map((item) => (
-                    <TableRow key={item.menu_item_id}>
-                      <TableCell>{item.menu_item_name}</TableCell>
+                    <TableRow key={item.menuItemId}>
+                      <TableCell>{item.menuItemName}</TableCell>
                       <TableCell>{item.quantity}</TableCell>
-                      <TableCell>₹{item.unit_price}</TableCell>
-                      <TableCell>₹{item.line_total}</TableCell>
+                      <TableCell>₹{item.unitPrice}</TableCell>
+                      <TableCell>₹{item.lineTotal}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -264,14 +266,14 @@ export default function BillingPage() {
               <p className="text-lg font-bold">Zayka Darbar</p>
               <hr className="my-2" />
               <p>Invoice ID: {generatedInvoice.id}</p>
-              {generatedInvoice.session_id ? (
-                <p>Session ID: {generatedInvoice.session_id}</p>
+              {generatedInvoice.sessionId ? (
+                <p>Session ID: {generatedInvoice.sessionId}</p>
               ) : null}
               {generatedInvoice.tableNumber ? (
                 <p>Table: {generatedInvoice.tableNumber}</p>
               ) : null}
-              <p>Type: {generatedInvoice.order_type}</p>
-              <p>Date: {generatedInvoice.created_at ? new Date(generatedInvoice.created_at).toLocaleString() : "N/A"}</p>
+              <p>Type: {generatedInvoice.orderType}</p>
+              <p>Date: {generatedInvoice.createdAt ? new Date(generatedInvoice.createdAt).toLocaleString() : "N/A"}</p>
             </div>
 
             <Table>
@@ -286,10 +288,10 @@ export default function BillingPage() {
               <TableBody>
                 {generatedInvoice.items?.map((item) => (
                   <TableRow key={item.id}>
-                    <TableCell>{item.menu_item_name}</TableCell>
+                    <TableCell>{item.menuItemName}</TableCell>
                     <TableCell>{item.quantity}</TableCell>
-                    <TableCell>₹{item.unit_price}</TableCell>
-                    <TableCell>₹{item.line_total}</TableCell>
+                    <TableCell>₹{item.unitPrice}</TableCell>
+                    <TableCell>₹{item.lineTotal}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -303,6 +305,46 @@ export default function BillingPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      {/* Invoice History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Invoices</CardTitle>
+          <CardDescription>Generated invoices across all tables and takeaways.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice ID</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {invoicesLoading ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground p-4">Loading recent invoices...</TableCell>
+                </TableRow>
+              ) : invoices?.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-muted-foreground p-4">No invoices generated yet.</TableCell>
+                </TableRow>
+              ) : (
+                invoices?.map((inv) => (
+                  <TableRow key={inv.id}>
+                    <TableCell className="font-medium truncate max-w-[120px]">{inv.id}</TableCell>
+                    <TableCell>{inv.createdAt ? new Date(inv.createdAt).toLocaleString() : "N/A"}</TableCell>
+                    <TableCell className="capitalize">{inv.orderType}</TableCell>
+                    <TableCell>₹{(inv.total ?? 0).toFixed(2)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }
